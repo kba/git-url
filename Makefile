@@ -80,7 +80,7 @@ bump-%: has-semver
 	### Fixed\
 	### Removed\
 	' CHANGELOG.md
-	sed -i '/^<!-- link-labels/a [$(VERSION_$*)]: ../compare/v$(VERSION)...v$(VERSION_$*)' CHANGELOG.md
+	sed -i '/^<!-- link-labels/a [$(VERSION_$*)]: ../../compare/v$(VERSION)...v$(VERSION_$*)' CHANGELOG.md
 	$(EDITOR) CHANGELOG.md
 	semver bump $*
 	git commit -v .

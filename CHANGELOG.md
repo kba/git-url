@@ -28,6 +28,6 @@ This project adheres to [Semantic Versioning](http://semver.org/).
 * Initial commit
 
 <!-- link-labels -->
-[0.0.3]: ../compare/v0.0.2...v0.0.3
-[0.0.2]: ../compare/v0.0.1...v0.0.2
-[0.0.1]: ../compare/v0.0.1...HEAD
+[0.0.3]: ../../compare/v0.0.2...v0.0.3
+[0.0.2]: ../../compare/v0.0.1...v0.0.2
+[0.0.1]: ../../compare/v0.0.1...HEAD
