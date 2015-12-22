@@ -2,8 +2,9 @@
 use File::Basename qw(basename);
 
 our $SCRIPT_NAME = "__SCRIPT_NAME__";
-our $VERSION = "__VERSION__";
-our $BUILD_DATE = "__BUILD_DATE__";
+our $VERSION     = "__VERSION__";
+our $BUILD_DATE  = "__BUILD_DATE__";
+our $LAST_COMMIT = "__LAST_COMMIT__";
 
 package RepoLocator;
 use strict;
@@ -97,6 +98,7 @@ sub _slurp {
     close $handle;
     return \@lines;
 }
+
 sub _git_dir_for_filename {
     my $path = shift;
     if (! -d $path) {
@@ -414,8 +416,10 @@ local $Data::Dumper::Terse = 1;
 use Term::ANSIColor;
 
 sub about {
+    print "$SCRIPT_NAME\n";
     print "Version: $VERSION\n";
     print "Build Date: $BUILD_DATE\n";
+    print "Last commit: https://github.com/kba/$SCRIPT_NAME/commit/$LAST_COMMIT\n";
 }
 
 sub usage {
@@ -434,6 +438,8 @@ sub usage {
     print "\nOptions:";
     print "\n\t" . color('bold magenta') . '--debug[=<trace|debug|info|error>]' . color('reset');
     print " " . "Default: 'error'";
+    print "\n\t" . color('bold magenta') . '--fork[=<org>]' . color('reset');
+    print " " . "Whether to fork the repository before cloning and to which organization. Default: no/config['github_user']";
 
     print "\nCommands:";
     print "\n\t" . color('bold green') . 'edit' . color('reset');

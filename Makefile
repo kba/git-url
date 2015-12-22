@@ -16,11 +16,13 @@ CHMOD_AX = chmod -c a+x
 	install-home install-home-bin install-home-config \
 	uninstall-home uninstall-home-bin uninstall-home-config \
 
+LAST_COMMIT = $(shell git log --pretty=format:'%h' -n 1)
 $(SCRIPT_NAME): $(SCRIPT_NAME).pl Makefile
 	@$(CP) $< $@
 	@sed -i 's/__SCRIPT_NAME__/$(SCRIPT_NAME)/' $@
 	@sed -i 's/__VERSION__/$(VERSION)/' $@
 	@sed -i 's/__BUILD_DATE__/$(shell date)/' $@
+	@sed -i 's/__LAST_COMMIT__/$(LAST_COMMIT)/' $@
 	@$(CHMOD_AX) $@
 
 clean:
@@ -81,4 +83,5 @@ bump-%: has-semver
 	sed -i '/^<!-- link-labels/a [$(VERSION_$*)]: ../compare/v$(VERSION)...v$(VERSION_$*)' CHANGELOG.md
 	$(EDITOR) CHANGELOG.md
 	git commit -v .
+	semver bump $*
 	git tag -a v$(VERSION_$*) -m "Release $(VERSION_$*)"
