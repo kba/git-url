@@ -1,9 +1,9 @@
 SCRIPT_NAME = git-url
-VERSION = 1.00
+VERSION = 0.0.2
 
 PREFIX = $(DESTDIR)/usr/local
 BINDIR = $(PREFIX)/bin
-HOME_BINDIR = $(HOME)/bin
+HOME_BINDIR = $(HOME)/.local/bin
 HOME_CONFDIR = $(HOME)/.config/$(SCRIPT_NAME)
 
 RM = rm -rvf
@@ -43,7 +43,10 @@ uninstall:
 
 # Home install
 
-install-home: check install-home-bin install-home-config
+check-home: check
+	@echo "$(PATH)" | grep -q '$(HOME_BINDIR)' || { echo "HOME_BINDIR $(HOME_BINDIR) not in your PATH!" && exit 1; }
+
+install-home: check-home install-home-bin install-home-config
 
 install-home-bin: $(SCRIPT_NAME) 
 	@$(MKDIR) $(HOME_BINDIR)
@@ -64,13 +67,18 @@ uninstall-home-config:
 # Distribution stuff
 
 TODAY := $(shell date '+%Y-%m-%d')
-NEXT_VERSION := $(shell echo "$(VERSION)"|sed 's/[^0-9]//g'|xargs expr 1 + |sed 's/\(.\)\(.*\)/\1.\2/')
-bump-version: has-expr has-xargs has-date
-	sed -i '/^VERSION = /s/.*/VERSION = $(NEXT_VERSION)/' Makefile
-	sed -i '/^<!-- newest-changes/a ## [$(NEXT_VERSION)] - $(TODAY)\
+VERSION_patch := $(shell semver bump patch --pretend)
+VERSION_minor := $(shell semver bump minor --pretend)
+VERSION_major := $(shell semver bump major --pretend)
+bump-%: has-semver
+	sed -i '/^VERSION = /s/.*/VERSION = $(VERSION_$*)/' Makefile
+	sed -i '/^<!-- newest-changes/a ## [$(VERSION_$*)] - $(TODAY)\
 	### Added\
 	### Changed\
 	### Fixed\
 	### Removed\
 	' CHANGELOG.md
-	sed -i '/^<!-- link-labels/a [$(NEXT_VERSION)]: ../compare/v$(VERSION)...v$(NEXT_VERSION)' CHANGELOG.md
+	sed -i '/^<!-- link-labels/a [$(VERSION_$*)]: ../compare/v$(VERSION)...v$(VERSION_$*)' CHANGELOG.md
+	$(EDITOR) CHANGELOG.md
+	git commit -v .
+	git tag -a v$(VERSION_$*) -m "Release $(VERSION_$*)"

@@ -15,7 +15,7 @@ use Term::ANSIColor;
 use File::Basename qw(dirname);
 use File::Spec::Functions qw(rel2abs);
 
-our $DEBUG = 1;
+our $DEBUG = 0;
 our $CONFIG_FILE = join('/', $ENV{HOME}, '.config', $SCRIPT_NAME, 'config.ini');
 
 #---------
@@ -32,7 +32,7 @@ sub __log {
 }
 sub _log_trace { __log(shift, "TRACE", 3, 'bold yellow'); }
 sub _log_debug { __log(shift, "DEBUG", 2, 'bold blue'); }
-sub _log_info  { __log(shift, "INFO", 1, 'bold blue'); }
+sub _log_info  { __log(shift, "INFO", 1, 'bold green'); }
 sub _log_error { __log(shift, "ERROR", 0, 'bold red'); }
 sub _log_die   { _log_error(shift); exit 70; }
 sub _require_config {
@@ -97,6 +97,20 @@ sub _slurp {
     close $handle;
     return \@lines;
 }
+sub _git_dir_for_filename {
+    my $path = shift;
+    if (! -d $path) {
+        _chdir(dirname($path));
+    } else {
+        _chdir($path);
+    }
+    my $dir = _qx('git rev-parse --show-toplevel 2>&1');
+    chomp($dir);
+    if ($? > 0) {
+        _log_error($dir);
+    }
+    return $dir;
+}
 
 #--------
 #
@@ -105,11 +119,15 @@ sub _slurp {
 #--------
 
 my $default_config = {
-    baseDir     => $ENV{GITDIR}  || $ENV{HOME} . '/build',
+    base_dir     => $ENV{GITDIR}  || $ENV{HOME} . '/build',
+    repo_dirs    => $ENV{GITDIR_PATH} || [],
     editor      => $ENV{EDITOR}  || 'vim',
     browser     => $ENV{BROWSER} || 'chromium',
     shell       => $ENV{SHELL}   || 'bash',
     github_user => $ENV{GITHUB_USER}
+};
+my $arrayConfigOpts = {
+    repo_dirs => 1
 };
 
 sub _load_config {
@@ -119,14 +137,17 @@ sub _load_config {
         my @lines = @{_slurp $CONFIG_FILE};
         for (@lines) {
             s/^\s+|\s+$//g;
-            next if /^$/;
-            next if /^[#;]/;
+            next if (/^$/ || /^[#;]/);
             my ($k, $v) = split /\s*=\s*/;
+            if ($arrayConfigOpts->{$k}) {
+                $v = [map { s/~/$ENV{HOME}/ ; s/\/$// ; $_ }
+                    split(/\s*,\s*/, $v)];
+            }
             $config->{$k} = $v;
         }
     }
-    # make sure baseDir exists
-    _mkdirp($config->{baseDir});
+    # make sure base_dir exists
+    _mkdirp($config->{base_dir});
     return $config;
 }
 
@@ -188,15 +209,9 @@ sub _parse_filename {
         return $self->_parse_github($location, $path);
     }
     $path = rel2abs($path);
-    if (! -d $path) {
-        _chdir(dirname($path));
-    } else {
-        _chdir($path);
-    }
-    my $dir = _qx('git rev-parse --show-toplevel 2>&1');
-    chomp($dir);
-    if ($? > 0) {
-        _log_die($dir);
+    my $dir = _git_dir_for_filename($path);
+    unless ($dir) {
+        _log_die("Not in a Git dir: '$path'");
     }
     $location->{path_to_repo} = $dir;
     $location->{path_within_repo} = substr($path, length($dir)) || '.';
@@ -257,11 +272,38 @@ sub _deparse_url {
     }
 }
 
+sub _find_in_repo_dirs {
+    my $self = shift;
+    for my $dir (@{$self->{config}->{repo_dirs}}, $self->{config}->{base_dir}) {
+        _log_trace("Checking repo_dir $dir");
+        if (! -d $dir) {
+            _log_error("Not a directory (in repo_dirs): $dir");
+            warn Dumper $self->{config}->{repo_dirs};
+        }
+        my @candidates = (
+            $self->{repo_name},
+            join('/', $self->{owner}, $self->{repo_name}),
+            join('/', $self->{host}, $self->{owner}, $self->{repo_name})
+        );
+        for my $candidate (@candidates) {
+            $candidate = "$dir/$candidate";
+            _log_trace("Trying candidate $candidate");
+            if (-d $candidate && _git_dir_for_filename($candidate) eq $candidate) {
+                $self->{path_to_repo} = $candidate;
+                return;
+            }
+        }
+    }
+}
 
 sub _clone_repo {
     my ($self) = @_;
     _require_location($self, 'host', 'owner', 'repo_name');
-    my $ownerDir = join('/', $self->{config}->{baseDir}, $self->{host}, $self->{owner});
+    if ($self->{path_to_repo}) {
+        _log_info("We already have a path to this one, not cloning to base_dir");
+        return;
+    }
+    my $ownerDir = join('/', $self->{config}->{base_dir}, $self->{host}, $self->{owner});
     _mkdirp($ownerDir);
     _chdir $ownerDir;
     my $repoDir = join('/', $ownerDir, $self->{repo_name});
@@ -306,6 +348,7 @@ sub new {
     while (my ($k, $v) = each(%{$location})) {
         $self->{$k} = $v;
     }
+    $self->_find_in_repo_dirs();
     if ($DEBUG > 1) {
         _log_trace("Parsed as: ". Dumper $self);
     }
@@ -353,6 +396,12 @@ sub tmux {
     }
 }
 
+sub show {
+    my ($self) = @_;
+    _require_location($self, 'path_to_repo');
+    print $self->{path_to_repo} . "\n";
+}
+
 sub browse {
     my ($self) = @_;
     _require_location($self, 'browse_url');
@@ -384,7 +433,7 @@ sub usage {
 
     print "\nOptions:";
     print "\n\t" . color('bold magenta') . '--debug[=<trace|debug|info|error>]' . color('reset');
-    print " " . "Default: 'debug'";
+    print " " . "Default: 'error'";
 
     print "\nCommands:";
     print "\n\t" . color('bold green') . 'edit' . color('reset');
@@ -395,6 +444,8 @@ sub usage {
     print "\t" . 'Get the URL to this file in the online repository.';
     print "\n\t" . color('bold green') . 'shell' . color('reset');
     print "\t" . 'Open a shell in the local repository directory';
+    print "\n\t" . color('bold green') . 'show' . color('reset');
+    print "\t" . 'Show the path of the local repository.';
     print "\n\t" . color('bold green') . 'tmux' . color('reset');
     print "\t" . 'Attach to or create a tmux session named like the repository.';
     print "\n\t" . color('bold green') . 'about' . color('reset');
