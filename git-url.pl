@@ -347,9 +347,9 @@ sub tmux {
     $self->_clone_repo();
     _require_location($self, 'path_to_repo');
     _chdir $self->{path_to_repo};
-    _system "tmux attach -d " + $self->{repo_name};
+    _system "tmux attach -d -t" . $self->{repo_name};
     if ($?) {
-        _system "tmux new -s " + $self->{repo_name};
+        _system "tmux new -s " . $self->{repo_name};
     }
 }
 
