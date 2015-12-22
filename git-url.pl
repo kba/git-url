@@ -121,12 +121,17 @@ sub _git_dir_for_filename {
 #--------
 
 my $default_config = {
-    base_dir     => $ENV{GITDIR}  || $ENV{HOME} . '/build',
-    repo_dirs    => $ENV{GITDIR_PATH} || [],
-    editor      => $ENV{EDITOR}  || 'vim',
-    browser     => $ENV{BROWSER} || 'chromium',
-    shell       => $ENV{SHELL}   || 'bash',
-    github_user => $ENV{GITHUB_USER}
+    base_dir    => $ENV{GITDIR}      || $ENV{HOME} . '/build',
+    repo_dirs   => $ENV{GITDIR_PATH} || [],
+    editor      => $ENV{EDITOR}      || 'vim',
+    browser     => $ENV{BROWSER}     || 'chromium',
+    shell       => $ENV{SHELL}       || 'bash',
+    github_user => $ENV{GITHUB_USER},
+    github_token => $ENV{GITHUB_TOKEN},
+    fork        => undef,
+    clone_opts  => '--depth 1',
+    prefer_ssh  => 1
+
 };
 my $arrayConfigOpts = {
     repo_dirs => 1
@@ -134,6 +139,7 @@ my $arrayConfigOpts = {
 
 sub _load_config {
     my $self = shift;
+    my $cli_config = shift;
     my $config = $default_config;
     if (-r $CONFIG_FILE) {
         my @lines = @{_slurp $CONFIG_FILE};
@@ -148,30 +154,36 @@ sub _load_config {
             $config->{$k} = $v;
         }
     }
+    while (my ($k, $v) = each(%{$cli_config})) {
+        $config->{$k} = $v;
+    }
     # make sure base_dir exists
     _mkdirp($config->{base_dir});
     return $config;
 }
 
-sub _parse_config_file {
+sub _get_clone_url_ssh_owner_reponame {
     my $self = shift;
-    my $config = shift;
+    return 'git@' . $self->{host} . ':' . join('/',
+        $self->{owner},
+        $self->{repo_name}
+    );
+}
+sub _get_clone_url_https_owner_reponame {
+    my $self = shift;
+    return 'https://' . join('/',
+        $self->{host},
+        $self->{owner},
+        $self->{repo_name}
+    );
 }
 
 sub _clone_command {
     my ($self) = @_;
-    if ($self->{host} =~ /git/) {
-        return join('',
-            'git clone --depth 1 ',
-            'https://',
-            join('/',
-                $self->{host},
-                $self->{owner},
-                $self->{repo_name}
-            ));
-    } else {
-        die 'Unknown repository type for ' . Dumper($self->{host});
-    }
+    return join(' ',
+        'git clone',
+        $self->{config}->{clone_opts},
+        $self->{clone_url});
 }
 
 sub _edit_command {
@@ -189,37 +201,38 @@ sub _edit_command {
 }
 
 sub _parse_github {
-    my ($self, $location, $path) = @_;
+    my ($self, $path) = @_;
     _log_info("Interpreting '$path' as Github shortcut");
     if (index($path, '/') == -1) {
         _log_debug("Prepending " . $self->{config}->{github_user});
         _require_config($self->{config}, 'github_user');
         $path = $self->{config}->{github_user} . '/' . $path;
     }
-    return $self->_parse_url($location, "https://github.com/$path");
+    return $self->_parse_url("https://github.com/$path");
 }
 
 sub _parse_filename {
-    my ($self, $location, $path) = @_;
+    my ($self, $path) = @_;
+    _log_trace("Parsing filename $path");
     unless ($path) {
         _log_die("No path given");
     }
     # split path into filename:line:column
-    ($path, $location->{line}, $location->{column}) = split(':', $path);
+    ($path, $self->{line}, $self->{column}) = split(':', $path);
     if (! -e $path) {
         _log_info("No such file/directory: $path");
-        return $self->_parse_github($location, $path);
+        return $self->_parse_github($path);
     }
     $path = rel2abs($path);
     my $dir = _git_dir_for_filename($path);
     unless ($dir) {
         _log_die("Not in a Git dir: '$path'");
     }
-    $location->{path_to_repo} = $dir;
-    $location->{path_within_repo} = substr($path, length($dir)) || '.';
-    $location->{path_within_repo} =~ s@^/@@;
+    $self->{path_to_repo} = $dir;
+    $self->{path_within_repo} = substr($path, length($dir)) || '.';
+    $self->{path_within_repo} =~ s@^/@@;
 
-    my $gitconfig = join('/', $location->{path_to_repo}, '.git', 'config');
+    my $gitconfig = join('/', $self->{path_to_repo}, '.git', 'config');
     my @lines = @{_slurp $gitconfig};
     my $baseURL;
     OUTER:
@@ -236,41 +249,57 @@ sub _parse_filename {
     if (! $baseURL) {
         _log_die("Couldn't find a remote");
     }
-    $self->_parse_url($location, $baseURL);
+    $self->_parse_url($baseURL);
 }
 
 sub _parse_url {
-    my ($self, $location, $url) = @_;
-    _log_debug("Parsing URL: $url");
-    $location->{url} = $url;
+    my ($self, $url) = @_;
+    _log_trace("Parsing URL: $url");
+    $self->{url} = $url;
     $url =~ s,^(https?://|git@),,;
     $url =~ s,:,/,;
     my @url_parts = split(/\//, $url);
-    $location->{host} = $url_parts[0];
-    $location->{owner} = $url_parts[1];
-    $location->{repo_name} = $url_parts[2];
-    $location->{repo_name} =~  s/\.git$//;
-    ($url_parts[$#url_parts], $location->{line}) = split('#', $url_parts[$#url_parts]);
+    $self->{host} = $url_parts[0];
+    $self->{owner} = $url_parts[1];
+    $self->{repo_name} = $url_parts[2];
+    $self->{repo_name} =~  s/\.git$//;
+    ($url_parts[$#url_parts], $self->{line}) = split('#', $url_parts[$#url_parts]);
     if ($url_parts[3] && $url_parts[3] eq 'blob') {
-        $location->{branch} = $url_parts[4];
-        $location->{path_within_repo} = join('/', @url_parts[5..$#url_parts]);
+        $self->{branch} = $url_parts[4];
+        $self->{path_within_repo} = join('/', @url_parts[5..$#url_parts]);
     }
-    return $location;
+    return $self;
 }
 
-sub _deparse_url {
-    my ($self, $location) = @_;
-    $location->{browse_url} = 'https://' .  join('/',
-        $location->{host},
-        $location->{owner},
-        $location->{repo_name},
+sub _set_clone_url {
+    my ($self) = @_;
+    _log_trace("Setting clone URL");
+    _require_location($self, 'host', 'owner', 'repo_name');
+    if ($self->{host} =~ /github/) {
+        if ($self->{owner} eq $self->{config}->{github_user} && $self->{config}->{prefer_ssh}) {
+            $self->{clone_url} = $self->_get_clone_url_ssh_owner_reponame();
+        } else {
+            $self->{clone_url} = $self->_get_clone_url_https_owner_reponame()
+        }
+    } else {
+        die 'Unknown repository type for ' . Dumper($self->{host});
+    }
+}
+
+sub _set_browse_url {
+    my ($self) = @_;
+    _log_trace("Setting browse URL");
+    $self->{browse_url} = 'https://' .  join('/',
+        $self->{host},
+        $self->{owner},
+        $self->{repo_name},
     );
-    if ( $location->{path_within_repo} !~ '^\.?$') {
-        $location->{browse_url} .= join('/',
+    if ( $self->{path_within_repo} !~ '^\.?$') {
+        $self->{browse_url} .= join('/',
             '',
             'blob',
-            $location->{branch},
-            $location->{path_within_repo});
+            $self->{branch},
+            $self->{path_within_repo});
     }
 }
 
@@ -298,12 +327,45 @@ sub _find_in_repo_dirs {
     }
 }
 
+sub _fork_repo {
+    my ($self) = @_;
+    _require_location($self, 'host', 'owner', 'repo_name');
+    _require_config($self->{config}, 'github_user', 'github_token');
+    if ($self->{host} ne 'github.com') {
+        _log_die("Forking only supported for Github currently.");
+    }
+    if ($self->{owner} eq $self->{config}->{github_user}) {
+        _log_info("Not forking an owned repository");
+        return;
+    }
+    my $api_url = join('/', 'https://api.github.com/repos', $self->{owner}, $self->{repo_name}, 'forks');
+    my $user = $self->{config}->{github_user};
+    my $token = $self->{config}->{github_token};
+    my $forkCmd = join(' ',
+        'curl',
+        '-i',
+        '-s',
+        "-u $user:$token",
+        '-XPOST',
+        $api_url
+    );
+    my $resp = _qx($forkCmd);
+    if ([split("\n", $resp)]->[0] !~ 202) {
+        _log_die("Failed to fork the repo: $resp");
+    }
+    $self->{owner} = $user;
+    $self->_reset_urls();
+}
+
 sub _clone_repo {
     my ($self) = @_;
     _require_location($self, 'host', 'owner', 'repo_name');
     if ($self->{path_to_repo}) {
         _log_info("We already have a path to this one, not cloning to base_dir");
         return;
+    }
+    if ($self->{config}->{fork}) {
+        $self->_fork_repo();
     }
     my $ownerDir = join('/', $self->{config}->{base_dir}, $self->{host}, $self->{owner});
     _mkdirp($ownerDir);
@@ -322,6 +384,12 @@ sub _clone_repo {
     }
     $self->{path_to_repo} = $repoDir;
 }
+sub _reset_urls {
+    my $self = shift;
+    $self->_set_browse_url();
+    $self->_set_clone_url();
+    $self->_find_in_repo_dirs();
+}
 
 
 #-------------
@@ -332,25 +400,20 @@ sub _clone_repo {
 
 sub new {
     my $class = shift;
-    my @args = @_;
+    my @args = @{shift @_};
+    my $cli_config = shift;
 
     my $self = bless {}, $class;
 
-    $self->{config} = $self->_load_config();
-    my $location = {
-        path_within_repo => '.',
-        branch => 'master'
-    };
+    $self->{config} = $self->_load_config($cli_config);
+    $self->{path_within_repo} = '.';
+    $self->{branch} = 'master';
     if ($args[0] =~ /^(https?:|git@)/) {
-        $self->_parse_url($location, $args[0]);
+        $self->_parse_url($args[0]);
     } else {
-        $self->_parse_filename($location, $args[0]);
+        $self->_parse_filename($args[0]);
     }
-    $self->_deparse_url($location);
-    while (my ($k, $v) = each(%{$location})) {
-        $self->{$k} = $v;
-    }
-    $self->_find_in_repo_dirs();
+    $self->_reset_urls();
     if ($DEBUG > 1) {
         _log_trace("Parsed as: ". Dumper $self);
     }
@@ -438,8 +501,8 @@ sub usage {
     print "\nOptions:";
     print "\n\t" . color('bold magenta') . '--debug[=<trace|debug|info|error>]' . color('reset');
     print " " . "Default: 'error'";
-    print "\n\t" . color('bold magenta') . '--fork[=<org>]' . color('reset');
-    print " " . "Whether to fork the repository before cloning and to which organization. Default: no/config['github_user']";
+    print "\n\t" . color('bold magenta') . '--fork' . color('reset');
+    print " " . "Whether to fork the repository before cloning. Default: undef";
 
     print "\nCommands:";
     print "\n\t" . color('bold green') . 'edit' . color('reset');
@@ -459,6 +522,7 @@ sub usage {
 }
 
 my @ARGV_PROCESSED;
+my $cli_config = {};
 while (my $arg = shift(@ARGV)) {
     if ($arg =~ '--debug') {
         my $minLevel = [split('=', $arg)]->[1] // 'debug';
@@ -467,6 +531,10 @@ while (my $arg = shift(@ARGV)) {
         $minLevel =~ s/^info$/1/;
         $minLevel =~ s/^error$/0/;
         $RepoLocator::DEBUG = $minLevel;
+    } elsif ($arg =~ '^-') {
+        $arg =~ s/^-*//;
+        my ($k, $v) = split('=', $arg);
+        $cli_config->{$k} = $v // 1;
     } else {
         push @ARGV_PROCESSED, $arg;
     }
@@ -475,7 +543,9 @@ my $command = shift(@ARGV_PROCESSED);
 if (! $command)            { usage; exit 1; }
 if ($command eq 'about')   { about; exit 0; }
 if ( ! $ARGV_PROCESSED[0]) { usage; exit 1; }
-my $loc = new RepoLocator(@ARGV_PROCESSED);
+
+my $loc = new RepoLocator(\@ARGV_PROCESSED, $cli_config);
+
 unless ($loc->can($command)) {
     print "Unknown command: '$command'\n";
     usage;

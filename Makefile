@@ -1,5 +1,5 @@
 SCRIPT_NAME = git-url
-VERSION = 0.0.2
+VERSION = 0.0.3
 
 PREFIX = $(DESTDIR)/usr/local
 BINDIR = $(PREFIX)/bin
@@ -82,6 +82,6 @@ bump-%: has-semver
 	' CHANGELOG.md
 	sed -i '/^<!-- link-labels/a [$(VERSION_$*)]: ../compare/v$(VERSION)...v$(VERSION_$*)' CHANGELOG.md
 	$(EDITOR) CHANGELOG.md
-	git commit -v .
 	semver bump $*
+	git commit -v .
 	git tag -a v$(VERSION_$*) -m "Release $(VERSION_$*)"
