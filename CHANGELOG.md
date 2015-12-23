@@ -4,6 +4,12 @@ Change Log
 All notable changes to this project will be documented in this file.
 This project adheres to [Semantic Versioning](http://semver.org/).
 
+## [unreleased]
+  * Allow no-path constructor
+  * tmux-ls
+  * man page
+  * README
+
 <!-- newest-changes -->
 ## [0.0.3] - 2015-12-22
 ### Added

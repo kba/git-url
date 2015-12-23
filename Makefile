@@ -3,19 +3,24 @@ VERSION = 0.0.3
 
 PREFIX = $(DESTDIR)/usr/local
 BINDIR = $(PREFIX)/bin
-HOME_BINDIR = $(HOME)/.local/bin
-HOME_CONFDIR = $(HOME)/.config/$(SCRIPT_NAME)
+MANDIR = $(PREFIX)/share/man/man1
+CONFDIR = $(HOME)/.config/$(SCRIPT_NAME)
 
 RM = rm -rvf
 CP = cp -rv
 CP_SECURE = cp -irv
 MKDIR = mkdir -pv
 CHMOD_AX = chmod -c a+x
+PANDOC = pandoc -s -t man
 
-.PHONY: clean install check \
-	install-home install-home-bin install-home-config \
-	uninstall-home uninstall-home-bin uninstall-home-config \
 
+.PHONY: clean check \
+	install install-bin install-man install-config uninstall \
+	install-home uninstall-home
+
+all: $(SCRIPT_NAME) $(SCRIPT_NAME).1
+
+# Script
 LAST_COMMIT = $(shell git log --pretty=format:'%h' -n 1)
 $(SCRIPT_NAME): $(SCRIPT_NAME).pl Makefile
 	@$(CP) $< $@
@@ -24,6 +29,10 @@ $(SCRIPT_NAME): $(SCRIPT_NAME).pl Makefile
 	@sed -i 's/__BUILD_DATE__/$(shell date)/' $@
 	@sed -i 's/__LAST_COMMIT__/$(LAST_COMMIT)/' $@
 	@$(CHMOD_AX) $@
+
+# Man page
+%.1: %.1.md has-pandoc
+	$(PANDOC) $< -o $@
 
 clean:
 	@$(RM) $(SCRIPT_NAME)
@@ -34,39 +43,50 @@ has-%:
 	@which $* >/dev/null
 
 check: has-perl has-git
+	@echo "$(PATH)" | grep -q '$(BINDIR)' || { echo "BINDIR $(BINDIR) not in your PATH!" && exit 1; }
+	@echo "$(MANPATH)" | grep -q '$(MANDIR)' || { echo "MANDIR $(MANDIR) not in your MANPATH!" && exit 1; }
 
-# System install
+#
+# Install / Uninstall
+#
 
-install: check $(SCRIPT_NAME) install-home-config
-	@$(CP) $(SCRIPT_NAME) $(BINDIR)
+install: install-bin install-config install-man
 
-uninstall:
+install-man: $(SCRIPT_NAME).1
+	@$(MKDIR) $(MANDIR)
+	@$(CP) -t $(MANDIR) $(SCRIPT_NAME).1
+
+install-bin: $(SCRIPT_NAME)
+	@$(MKDIR) $(BINDIR)
+	@$(CP) -t $(BINDIR) $(SCRIPT_NAME)
+
+install-config: config.ini
+	@$(MKDIR) $(CONFDIR)
+	@$(CP_SECURE) -t $(CONFDIR) config.ini
+
+uninstall-all: uninstall uninstall-config
+
+uninstall: uninstall-bin uninstall-man
+
+uninstall-man:
+	@$(RM) $(MANDIR)/$(SCRIPT_NAME).1
+
+uninstall-bin:
 	@$(RM) $(BINDIR)/$(SCRIPT_NAME)
 
-# Home install
+uninstall-config:
+	@echo "Ctrl-C to keep, enter to delete $(CONFDIR)?" && read x && $(RM) $(CONFDIR)
 
-check-home: check
-	@echo "$(PATH)" | grep -q '$(HOME_BINDIR)' || { echo "HOME_BINDIR $(HOME_BINDIR) not in your PATH!" && exit 1; }
+install-home:
+	$(MAKE) PREFIX=$(HOME)/.local install
 
-install-home: check-home install-home-bin install-home-config
+uninstall-home:
+	$(MAKE) PREFIX=$(HOME)/.local uninstall
 
-install-home-bin: $(SCRIPT_NAME) 
-	@$(MKDIR) $(HOME_BINDIR)
-	@$(CP) -t $(HOME_BINDIR) $(SCRIPT_NAME)
 
-install-home-config: config.ini
-	@$(MKDIR) $(HOME_CONFDIR)
-	@$(CP_SECURE) -t $(HOME_CONFDIR) config.ini
-
-uninstall-home: uninstall-home-bin uninstall-home-config
-
-uninstall-home-bin:
-	@$(RM) $(HOME_BINDIR)/$(SCRIPT_NAME)
-
-uninstall-home-config:
-	@echo "Ctrl-C to keep, enter to delete $(HOME_CONFDIR)?" && read x && $(RM) $(HOME_CONFDIR)
-
+#
 # Distribution stuff
+#
 
 TODAY := $(shell date '+%Y-%m-%d')
 VERSION_patch := $(shell semver bump patch --pretend)
