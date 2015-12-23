@@ -114,11 +114,11 @@ sub _git_dir_for_filename {
     return $dir;
 }
 
-#--------
+#------------------------------------------------
 #
 # Config
 #
-#--------
+#------------------------------------------------
 
 my $default_config = {
     base_dir    => $ENV{GITDIR}      || $ENV{HOME} . '/build',
@@ -408,12 +408,16 @@ sub new {
     $self->{config} = $self->_load_config($cli_config);
     $self->{path_within_repo} = '.';
     $self->{branch} = 'master';
-    if ($args[0] =~ /^(https?:|git@)/) {
-        $self->_parse_url($args[0]);
+    if ($args[0]) {
+        if ($args[0] =~ /^(https?:|git@)/) {
+            $self->_parse_url($args[0]);
+        } else {
+            $self->_parse_filename($args[0]);
+        }
+        $self->_reset_urls();
     } else {
-        $self->_parse_filename($args[0]);
+        _log_info("No path or URL given");
     }
-    $self->_reset_urls();
     if ($DEBUG > 1) {
         _log_trace("Parsed as: ". Dumper $self);
     }
@@ -431,9 +435,8 @@ sub edit {
     my ($self) = @_;
     $self->_clone_repo();
     _require_location($self, 'path_to_repo');
-    _chdir($self->{path_to_repo});
-    my $editCmd = $self->_edit_command();
-    _system($editCmd);
+    _chdir $self->{path_to_repo};
+    _system $self->_edit_command();
 }
 
 sub url {
@@ -448,6 +451,11 @@ sub shell {
     _require_location($self, 'path_to_repo');
     _chdir $self->{path_to_repo};
     _system $self->{config}->{shell};
+}
+
+sub tmux_ls {
+    my $self = @_;
+    _system("tmux ls -F '#{session_name}'");
 }
 
 sub tmux {
@@ -479,13 +487,20 @@ local $Data::Dumper::Terse = 1;
 use Term::ANSIColor;
 
 sub about {
-    print "$SCRIPT_NAME\n";
-    print "Version: $VERSION\n";
+    my ($cli_config) = @_;
+    print "$SCRIPT_NAME v$VERSION\n";
     print "Build Date: $BUILD_DATE\n";
     print "Last commit: https://github.com/kba/$SCRIPT_NAME/commit/$LAST_COMMIT\n";
+    print "Configuration: " . Dumper new RepoLocator([], $cli_config)->{config};
 }
 
 sub usage {
+    my $msg = shift;
+    if ($msg) {
+        print "\n";
+        print color('bold red') . 'Error: ' . color('reset') . $msg . "\n";
+        print "\n";
+    }
     print "Usage: ";
     print color('bold blue');
     print $SCRIPT_NAME;
@@ -517,6 +532,8 @@ sub usage {
     print "\t" . 'Show the path of the local repository.';
     print "\n\t" . color('bold green') . 'tmux' . color('reset');
     print "\t" . 'Attach to or create a tmux session named like the repository.';
+    print "\n\t" . color('bold green') . 'tmux-ls' . color('reset');
+    print "\t" . 'List tmux sessions';
     print "\n\t" . color('bold green') . 'about' . color('reset');
     print "\t" . 'Print about info.';
 }
@@ -539,10 +556,15 @@ while (my $arg = shift(@ARGV)) {
         push @ARGV_PROCESSED, $arg;
     }
 }
+my %noarg_commands = (
+    about => 1,
+    tmux_ls => 1
+);
 my $command = shift(@ARGV_PROCESSED);
-if (! $command)            { usage; exit 1; }
-if ($command eq 'about')   { about; exit 0; }
-if ( ! $ARGV_PROCESSED[0]) { usage; exit 1; }
+$command =~ s/[^a-z0-9]/_/gi;
+if (! $command)            { usage "Must specify command"; exit 1; }
+if ($command eq 'about')   { about $cli_config; exit 0; }
+if (! $noarg_commands{$command} && ! $ARGV_PROCESSED[0]) { usage "Command $command requires an argument"; exit 1; }
 
 my $loc = new RepoLocator(\@ARGV_PROCESSED, $cli_config);
 
