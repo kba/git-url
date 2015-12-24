@@ -129,6 +129,7 @@ my $default_config = {
     github_user => $ENV{GITHUB_USER},
     github_token => $ENV{GITHUB_TOKEN},
     fork        => undef,
+    no_local => undef,
     clone_opts  => '--depth 1',
     prefer_ssh  => 1
 
@@ -204,8 +205,8 @@ sub _parse_github {
     my ($self, $path) = @_;
     _log_info("Interpreting '$path' as Github shortcut");
     if (index($path, '/') == -1) {
-        _log_debug("Prepending " . $self->{config}->{github_user});
         _require_config($self->{config}, 'github_user');
+        _log_debug("Prepending " . $self->{config}->{github_user});
         $path = $self->{config}->{github_user} . '/' . $path;
     }
     return $self->_parse_url("https://github.com/$path");
@@ -388,7 +389,9 @@ sub _reset_urls {
     my $self = shift;
     $self->_set_browse_url();
     $self->_set_clone_url();
-    $self->_find_in_repo_dirs();
+    unless ($self->{config}->{no_local}) {
+        $self->_find_in_repo_dirs();
+    }
 }
 
 
@@ -518,6 +521,8 @@ sub usage {
     print " " . "Default: 'error'";
     print "\n\t" . color('bold magenta') . '--fork' . color('reset');
     print " " . "Whether to fork the repository before cloning. Default: undef";
+    print "\n\t" . color('bold magenta') . '--no-local' . color('reset');
+    print " " . "Don't look for the repo in the directories";
 
     print "\nCommands:";
     print "\n\t" . color('bold green') . 'edit' . color('reset');

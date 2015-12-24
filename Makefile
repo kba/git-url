@@ -77,6 +77,9 @@ uninstall-bin:
 uninstall-config:
 	@echo "Ctrl-C to keep, enter to delete $(CONFDIR)?" && read x && $(RM) $(CONFDIR)
 
+install-home-bin:
+	$(MAKE) PREFIX=$(HOME)/.local install-bin
+
 install-home:
 	$(MAKE) PREFIX=$(HOME)/.local install
 
