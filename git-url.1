@@ -10,8 +10,17 @@ part\f[]]
 .PP
 \&...
 .SH OPTIONS
+.PP
+All options can also be specified in the \f[C]config.ini\f[], just leave
+of the leading slashes.
+.PP
+Many options reuse standard environment variables as their default,
+denoted by \f[I]ENV:VARNAME\f[].
+These environment variables can be set in a shell startup script such as
+\f[C]~.zshrc\f[] (for \f[C]zsh\f[] (1)) or \f[C]~/.bashrc\f[] (for
+\f[C]bash\f[] (1)).
 .TP
-.B \-\-debug[=\f[I]LEVEL\f[]]
+.B \-\-debug[=\f[I]LEVEL\f[]], ENV:\f[I]DEBUG\f[], DEFAULT:\f[I]"error"\f[]
 Specify logging level.
 Can be one of \f[C]trace\f[], \f[C]debug\f[], \f[C]info\f[] or
 \f[C]error\f[].
@@ -20,10 +29,41 @@ If the option is omitted, only errors will be logged.
 .RS
 .RE
 .TP
-.B \-\-fork
+.B \-\-github\-user=\f[I]GITHUB_USER\f[], ENV:\f[I]GITHUB_USER\f[], DEFAULT:\f[I]\-\f[]
+Your github user name.
+.RS
+.RE
+.TP
+.B \-\-github\-api=\f[I]GITHUB_API\f[], ENV:\f[I]\-\-\f[], DEFAULT:\f[I]"https://api.github.com"\f[]
+Base URL of the Github API to use.
+Meaningful only for Github Enterprise users.
+.RS
+.RE
+.TP
+.B \-\-fork, ENV:\f[I]\-\-\f[], DEFAULT:\f[I]0\f[]
 Whether remote repositories should be forked before cloning.
 .RS
 .RE
+.TP
+.B \-\-create, ENV:\f[I]\-\-\f[], DEFAULT:\f[I]0\f[]
+Whether to create a remote repository if local cloen could not be found.
+.RS
+.RE
+.TP
+.B \-\-no\-local, ENV:\f[I]\-\-\f[], DEFAULT:\f[I]0\f[]
+Whether to skip searching a all the directories in \f[C]repo_dir\f[] for
+matching local repos.
+.RS
+.RE
+.TP
+.B \-\-base_dir=\f[I]BASEDIR\f[], ENV:\f[I]GITDIR\f[], DEFAULT:\f[I]"~/build"\f[]
+The base directory to clone repos to and look for them.
+.RS
+.RE
+.SH COMMANDS
+.SS shell
+.PP
+Open a shell in the repository.
 .SH SEE ALSO
 .PP
 \f[C]git\f[] (1), \f[C]curl\f[] (1), \f[C]perl\f[] (1)

@@ -14,7 +14,6 @@ MKDIR = mkdir -pv
 CHMOD_AX = chmod -c a+x
 PANDOC = pandoc -s -t man
 
-
 .PHONY: clean check \
 	install install-bin install-man install-config uninstall \
 	install-home uninstall-home
@@ -32,8 +31,11 @@ $(SCRIPT_NAME): $(SCRIPT_NAME).pl Makefile
 	@$(CHMOD_AX) $@
 
 # Man page
-%.1: %.1.md has-pandoc
-	$(PANDOC) $< -o $@
+%.1: %.1.md has-pandoc has-envsubst
+	@echo "'$<' -> '$@'"
+	@eval `./$(SCRIPT_NAME) dump-config |sed 's,$(HOME),~,g'|sed 's/^/export /'` && \
+		cat $< | envsubst \
+		| $(PANDOC) -o $@
 
 clean:
 	@$(RM) $(SCRIPT_NAME)
