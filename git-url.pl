@@ -25,6 +25,14 @@ our $CONFIG_FILE = join('/', $ENV{HOME}, '.config', $SCRIPT_NAME, 'config.ini');
 #
 #---------
 
+my $__log_levels = {
+    'trace' => 3,
+    'debug' => 2,
+    'info'  => 1,
+    'error' => 0,
+    'off'   => -1
+};
+
 sub __log {
     my @msgs = @{shift @_};
     my ($levelName, $minLevel, $color) = @_;
@@ -128,6 +136,7 @@ my $default_config = {
     editor       => $ENV{EDITOR}      || 'vim',
     browser      => $ENV{BROWSER}     || 'chromium',
     shell        => $ENV{SHELL}       || 'bash',
+    debug        => $ENV{LOGLEVEL}    || 'error',
     github_user  => $ENV{GITHUB_USER},
     github_token => $ENV{GITHUB_TOKEN},
     github_api   => 'https://api.github.com',
@@ -161,6 +170,8 @@ sub _load_config {
     while (my ($k, $v) = each(%{$cli_config})) {
         $config->{$k} = $v;
     }
+    # set log level
+    $DEBUG = $__log_levels->{$config->{debug}};
     # make sure base_dir exists
     _mkdirp($config->{base_dir});
     return $config;
@@ -511,7 +522,7 @@ sub tmux {
         $self->_clone_repo();
         _require_location($self, 'path_to_repo');
         _chdir $self->{path_to_repo};
-        $session = $self->{path_to_repo};
+        $session = $self->{repo_name};
     }
     _system "tmux attach -d -t" . $session;
     if ($?) {
@@ -541,14 +552,26 @@ sub about {
     print "$SCRIPT_NAME v$VERSION\n";
     print "Build Date: $BUILD_DATE\n";
     print "Last commit: https://github.com/kba/$SCRIPT_NAME/commit/$LAST_COMMIT\n";
-    print "Configuration: " . Dumper new RepoLocator([], $cli_config)->{config};
+    print "Configuration:\n";
+    dump_config($cli_config)
+}
+sub dump_config {
+    my ($cli_config) = @_;
+    my %config = %{ new RepoLocator([], $cli_config)->{config} };
+    for my $k (sort keys %config) {
+        my $v = $config{$k};
+        if (ref($v) eq 'ARRAY') {
+            $v = join(',', @{$v});
+        }
+        printf qq(%s="%s"\n), $k, $v||0;
+    }
 }
 
 sub usage {
     my $msg = shift;
     if ($msg) {
         print "\n";
-        print color('bold red') . 'Error: ' . color('reset') . $msg . "\n";
+        print colored('Error: ', 'bold red') . $msg . "\n";
         print "\n";
     }
     print "Usage: ";
@@ -595,14 +618,7 @@ sub usage {
 my @ARGV_PROCESSED;
 my $cli_config = {};
 while (my $arg = shift(@ARGV)) {
-    if ($arg =~ '--debug') {
-        my $minLevel = [split('=', $arg)]->[1] // 'debug';
-        $minLevel =~ s/^trace$/3/;
-        $minLevel =~ s/^debug$/2/;
-        $minLevel =~ s/^info$/1/;
-        $minLevel =~ s/^error$/0/;
-        $RepoLocator::DEBUG = $minLevel;
-    } elsif ($arg =~ '^-') {
+    if ($arg =~ '^-') {
         $arg =~ s/^-*//;
         my ($k, $v) = split('=', $arg);
         $cli_config->{$k} = $v // 1;
@@ -611,13 +627,14 @@ while (my $arg = shift(@ARGV)) {
     }
 }
 my %noarg_commands = (
-    about => 1,
     tmux_ls => 1
 );
 my $command = shift(@ARGV_PROCESSED);
-if (! $command)            { usage "Must specify command"; exit 1; }
+if (! $command)                { usage "Must specify command"; exit 1; }
+if ($command eq 'about')       { about $cli_config; exit 0; }
+if ($command =~ /dump.config/) { dump_config $cli_config; exit 0; }
+
 $command =~ s/[^a-z0-9]/_/gi;
-if ($command eq 'about')   { about $cli_config; exit 0; }
 if (! $noarg_commands{$command} && ! $ARGV_PROCESSED[0]) { usage "Command $command requires an argument"; exit 1; }
 
 my $loc = new RepoLocator(\@ARGV_PROCESSED, $cli_config);
