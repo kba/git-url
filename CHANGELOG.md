@@ -5,12 +5,21 @@ All notable changes to this project will be documented in this file.
 This project adheres to [Semantic Versioning](http://semver.org/).
 
 ## [unreleased]
-  * Allow no-path constructor
-  * tmux-ls
-  * man page
-  * README
 
 <!-- newest-changes -->
+
+## [0.0.4] - 2015-12-25
+### Added
+  * tmux-ls command
+  * man page
+  * README
+  * --no-local option
+  * --create option
+### Changed
+  * Allow no-path constructor
+### Fixed
+  * tmux attach to existing session instead of clone if possible
+
 ## [0.0.3] - 2015-12-22
 ### Added
     * --fork option to work with Github API
@@ -34,6 +43,7 @@ This project adheres to [Semantic Versioning](http://semver.org/).
 * Initial commit
 
 <!-- link-labels -->
+[0.0.4]: ../../compare/v0.0.3...v0.0.4
 [0.0.3]: ../../compare/v0.0.2...v0.0.3
 [0.0.2]: ../../compare/v0.0.1...v0.0.2
 [0.0.1]: ../../compare/v0.0.1...HEAD
