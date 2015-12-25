@@ -26,16 +26,17 @@ our $CONFIG_FILE = join('/', $ENV{HOME}, '.config', $SCRIPT_NAME, 'config.ini');
 #---------
 
 sub __log {
-    my ($msg, $levelName, $minLevel, $color) = @_;
+    my @msgs = @{shift @_};
+    my ($levelName, $minLevel, $color) = @_;
     if ($DEBUG >= $minLevel) {
-        printf("[" . color($color) . $levelName . color('reset') . "] $msg\n");
+        printf("[%s] %s\n", colored($levelName, $color), sprintf(shift(@msgs), @msgs));
     }
 }
-sub _log_trace { __log(shift, "TRACE", 3, 'bold yellow'); }
-sub _log_debug { __log(shift, "DEBUG", 2, 'bold blue'); }
-sub _log_info  { __log(shift, "INFO", 1, 'bold green'); }
-sub _log_error { __log(shift, "ERROR", 0, 'bold red'); }
-sub _log_die   { _log_error(shift); exit 70; }
+sub _log_trace { __log(\@_, "TRACE", 3, 'bold yellow'); }
+sub _log_debug { __log(\@_, "DEBUG", 2, 'bold blue'); }
+sub _log_info  { __log(\@_, "INFO", 1, 'bold green'); }
+sub _log_error { __log(\@_, "ERROR", 0, 'bold red'); }
+sub _log_die   { _log_error(\@_); exit 70; }
 sub _require_config {
     my ($config, @keys) = @_;
     my $die_flag;
@@ -119,20 +120,22 @@ sub _git_dir_for_filename {
 # Config
 #
 #------------------------------------------------
+##config
 
 my $default_config = {
-    base_dir    => $ENV{GITDIR}      || $ENV{HOME} . '/build',
-    repo_dirs   => $ENV{GITDIR_PATH} || [],
-    editor      => $ENV{EDITOR}      || 'vim',
-    browser     => $ENV{BROWSER}     || 'chromium',
-    shell       => $ENV{SHELL}       || 'bash',
-    github_user => $ENV{GITHUB_USER},
+    base_dir     => $ENV{GITDIR}      || $ENV{HOME} . '/build',
+    repo_dirs    => $ENV{GITDIR_PATH} || [],
+    editor       => $ENV{EDITOR}      || 'vim',
+    browser      => $ENV{BROWSER}     || 'chromium',
+    shell        => $ENV{SHELL}       || 'bash',
+    github_user  => $ENV{GITHUB_USER},
     github_token => $ENV{GITHUB_TOKEN},
-    fork        => undef,
-    no_local => undef,
-    clone_opts  => '--depth 1',
-    prefer_ssh  => 1
-
+    github_api   => 'https://api.github.com',
+    clone_opts   => '--depth 1',
+    prefer_ssh   => 1,
+    fork         => undef,
+    create       => undef,
+    no_local     => undef,
 };
 my $arrayConfigOpts = {
     repo_dirs => 1
@@ -306,6 +309,7 @@ sub _set_browse_url {
 
 sub _find_in_repo_dirs {
     my $self = shift;
+    _log_trace("Looking for %s in repo_dirs", $self->{repo_name});
     for my $dir (@{$self->{config}->{repo_dirs}}, $self->{config}->{base_dir}) {
         _log_trace("Checking repo_dir $dir");
         if (! -d $dir) {
@@ -328,6 +332,39 @@ sub _find_in_repo_dirs {
     }
 }
 
+sub _create_repo {
+    my ($self) = @_;
+    _require_location($self, 'host', 'owner', 'repo_name');
+    if ($self->{host} ne 'github.com') {
+        _log_die("Creating repos only supported for Github currently.");
+    }
+    _require_config($self->{config}, 'github_user', 'github_token');
+    if ($self->{owner} ne $self->{config}->{github_user}) {
+        return _log_info(sprintf(
+                "Can only create repos for %s, not %s",
+                $self->{owner},
+                $self->{config}->{github_user}));
+    }
+    my $api_url = join('/',
+        $self->{config}->{github_api}, 'user', 'repos');
+    my $user = $self->{config}->{github_user};
+    my $token = $self->{config}->{github_token};
+    my $forkCmd = join(' ',
+        'curl',
+        '-i',
+        '-s',
+        "-u $user:$token",
+        '-d ', sprintf(q('{"name": "%s"}'), $self->{repo_name}),
+        '-XPOST',
+        $api_url
+    );
+    my $resp = _qx($forkCmd);
+    if ([split("\n", $resp)]->[0] !~ 201) {
+        _log_die("Failed to create the repo: $resp");
+    }
+    $self->{owner} = $user;
+    $self->_reset_urls();
+}
 sub _fork_repo {
     my ($self) = @_;
     _require_location($self, 'host', 'owner', 'repo_name');
@@ -339,7 +376,7 @@ sub _fork_repo {
         _log_info("Not forking an owned repository");
         return;
     }
-    my $api_url = join('/', 'https://api.github.com/repos', $self->{owner}, $self->{repo_name}, 'forks');
+    my $api_url = join('/', $self->{config}->{github_api}, 'repos', $self->{owner}, $self->{repo_name}, 'forks');
     my $user = $self->{config}->{github_user};
     my $token = $self->{config}->{github_token};
     my $forkCmd = join(' ',
@@ -361,7 +398,7 @@ sub _fork_repo {
 sub _clone_repo {
     my ($self) = @_;
     _require_location($self, 'host', 'owner', 'repo_name');
-    if ($self->{path_to_repo}) {
+    if ($self->{path_to_repo} && !$self->{config}->{no_local}) {
         _log_info("We already have a path to this one, not cloning to base_dir");
         return;
     }
@@ -376,7 +413,11 @@ sub _clone_repo {
     if (! -d $repoDir) {
         my $output = _system($cloneCmd . ' 2>&1');
         if ($? > 0) {
-            _log_die("'$cloneCmd' failed with '$?': " . $output);
+            if ($self->{config}->{create}) {
+                $self->_create_repo();
+            } else {
+                _log_die("'$cloneCmd' failed with '$?': " . $output);
+            }
         }
     }
     if (! -d $repoDir) {
@@ -523,6 +564,8 @@ sub usage {
     print " " . "Whether to fork the repository before cloning. Default: undef";
     print "\n\t" . color('bold magenta') . '--no-local' . color('reset');
     print " " . "Don't look for the repo in the directories";
+    print "\n\t" . color('bold magenta') . '--create' . color('reset');
+    print " " . "Create a new repo if it could not be found";
 
     print "\nCommands:";
     print "\n\t" . color('bold green') . 'edit' . color('reset');
@@ -566,8 +609,8 @@ my %noarg_commands = (
     tmux_ls => 1
 );
 my $command = shift(@ARGV_PROCESSED);
-$command =~ s/[^a-z0-9]/_/gi;
 if (! $command)            { usage "Must specify command"; exit 1; }
+$command =~ s/[^a-z0-9]/_/gi;
 if ($command eq 'about')   { about $cli_config; exit 0; }
 if (! $noarg_commands{$command} && ! $ARGV_PROCESSED[0]) { usage "Command $command requires an argument"; exit 1; }
 
