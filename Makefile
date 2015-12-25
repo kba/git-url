@@ -1,5 +1,5 @@
 SCRIPT_NAME = git-url
-VERSION = 0.0.3
+VERSION = $(shell cat .version)
 
 PREFIX = $(DESTDIR)/usr/local
 BINDIR = $(PREFIX)/bin
@@ -8,6 +8,7 @@ CONFDIR = $(HOME)/.config/$(SCRIPT_NAME)
 
 RM = rm -rvf
 CP = cp -rv
+LN = ln -si
 CP_SECURE = cp -irv
 MKDIR = mkdir -pv
 CHMOD_AX = chmod -c a+x
@@ -36,6 +37,7 @@ $(SCRIPT_NAME): $(SCRIPT_NAME).pl Makefile
 
 clean:
 	@$(RM) $(SCRIPT_NAME)
+	@$(RM) $(SCRIPT_NAME).1
 
 # Check for installed programs
 
@@ -77,8 +79,8 @@ uninstall-bin:
 uninstall-config:
 	@echo "Ctrl-C to keep, enter to delete $(CONFDIR)?" && read x && $(RM) $(CONFDIR)
 
-install-home-bin:
-	$(MAKE) PREFIX=$(HOME)/.local install-bin
+link: $(SCRIPT_NAME)
+	$(LN) $(PWD)/$(SCRIPT_NAME) $(HOME)/.local/bin/$(SCRIPT_NAME)
 
 install-home:
 	$(MAKE) PREFIX=$(HOME)/.local install
@@ -96,7 +98,6 @@ VERSION_patch := $(shell semver bump patch --pretend)
 VERSION_minor := $(shell semver bump minor --pretend)
 VERSION_major := $(shell semver bump major --pretend)
 bump-%: has-semver
-	sed -i '/^VERSION = /s/.*/VERSION = $(VERSION_$*)/' Makefile
 	sed -i '/^<!-- newest-changes/a ## [$(VERSION_$*)] - $(TODAY)\
 	### Added\
 	### Changed\
@@ -107,4 +108,4 @@ bump-%: has-semver
 	$(EDITOR) CHANGELOG.md
 	semver bump $*
 	git commit -v .
-	git tag -a v$(VERSION_$*) -m "Release $(VERSION_$*)"
+	git tag -a v$(VERSION_$*) -m "Release $(VERSION_$*)" --edit
