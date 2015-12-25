@@ -448,6 +448,7 @@ sub new {
     my $cli_config = shift;
 
     my $self = bless {}, $class;
+    $self->{args} = \@args;
 
     $self->{config} = $self->_load_config($cli_config);
     $self->{path_within_repo} = '.';
@@ -504,12 +505,17 @@ sub tmux_ls {
 
 sub tmux {
     my ($self) = @_;
-    $self->_clone_repo();
-    _require_location($self, 'path_to_repo');
-    _chdir $self->{path_to_repo};
-    _system "tmux attach -d -t" . $self->{repo_name};
+    my $needle = $self->{args}->[0];
+    my ($session) = grep /^$needle/, split("\n", _qx("tmux ls -F '#{session_name}'"));
+    if (! $session) {
+        $self->_clone_repo();
+        _require_location($self, 'path_to_repo');
+        _chdir $self->{path_to_repo};
+        $session = $self->{path_to_repo};
+    }
+    _system "tmux attach -d -t" . $session;
     if ($?) {
-        _system "tmux new -s " . $self->{repo_name};
+        _system "tmux new -s " . $session;
     }
 }
 
