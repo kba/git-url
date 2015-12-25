@@ -108,4 +108,4 @@ bump-%: has-semver
 	$(EDITOR) CHANGELOG.md
 	semver bump $*
 	git commit -v .
-	git tag -a v$(VERSION_$*) -m "Release $(VERSION_$*)" --edit
+	git tag -a v$(VERSION_$*) -m "Release $(VERSION_$*)"
