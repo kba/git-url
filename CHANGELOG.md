@@ -11,21 +11,26 @@ Changed
 Removed
 
 <!-- newest-changes -->
+## [0.0.7] - 2016-01-07
+Added
+* man page almost complete
+Fixed
+* missing second clone after creating repositories 
+
 ## [0.0.6] - 2016-01-07
-### Fixed
+Fixed
 * rel2abs was in the wrong package
 
 ## [0.0.5] - 2016-01-07
-### Added
+Added
 * dump-config command
 * improve man page
 * Gitlab API support for creating repos
-### Changed
+Changed
 * Extracted Github/Gitlab specific functionality to resp. packages
-### Fixed
+Fixed
 * Log levels
 * Extended man page coverage of config defaults / commands
-### Removed
 
 
 ## [0.0.4] - 2015-12-25
@@ -68,6 +73,7 @@ Added
 * Initial commit
 
 <!-- link-labels -->
+[0.0.7]: ../../compare/v0.0.6...v0.0.7
 [0.0.6]: ../../compare/v0.0.5...v0.0.6
 [0.0.5]: ../../compare/v0.0.4...v0.0.5
 [0.0.4]: ../../compare/v0.0.3...v0.0.4
