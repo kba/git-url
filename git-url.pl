@@ -39,7 +39,7 @@ sub log_trace { _log(\@_, "TRACE", 3, 'bold yellow'); }
 sub log_debug { _log(\@_, "DEBUG", 2, 'bold blue'); }
 sub log_info  { _log(\@_, "INFO", 1, 'bold green'); }
 sub log_error { _log(\@_, "ERROR", 0, 'bold red'); }
-sub log_die   { log_error(@_); exit 70; }
+sub log_die   { $_[1] .= join(' ', caller) ; log_error(@_); exit 70; }
 sub require_config {
     my ($config, @keys) = @_;
     my $die_flag;
@@ -49,18 +49,18 @@ sub require_config {
             $die_flag = 1;
         }
     }
-    log_die("Unmet config requirements") if $die_flag;
+    log_die("Unmet config requirements at" . join(' ', caller)) if $die_flag;
 }
 sub require_location {
     my ($location, @keys) = @_;
     my $die_flag;
     for my $key (@keys) {
         unless (defined $location->{$key}) {
-            log_die("This feature requires the '$key' location information but it wasn't detected.");
+            log_error("This feature requires the '$key' location information but it wasn't detected.");
             $die_flag = 1;
         }
     }
-    log_die("Unmet location requirements") if $die_flag;
+    log_die("Unmet location requirements at " . join(' ', caller)) if $die_flag;
 }
 
 #---------
@@ -487,6 +487,7 @@ sub _clone_repo {
         if ($? > 0) {
             if ($self->{config}->{create}) {
                 $self->_create_repo();
+                $self->_clone_repo()
             } else {
                 HELPER::log_die("'$cloneCmd' failed with '$?': " . $output);
             }
