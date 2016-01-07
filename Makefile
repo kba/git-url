@@ -12,7 +12,7 @@ LN = ln -si
 CP_SECURE = cp -irv
 MKDIR = mkdir -pv
 CHMOD_AX = chmod -c a+x
-PANDOC = pandoc -s -t man
+PANDOC = pandoc -s -M hyphenate=false -V adjusting=false -t man
 
 .PHONY: clean check \
 	install install-bin install-man install-config uninstall \
