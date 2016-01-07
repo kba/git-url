@@ -6,14 +6,23 @@ This project adheres to [Semantic Versioning](http://semver.org/).
 
 ## [unreleased]
 Added
-* dump-config command
-* improve man page
-
 Fixed
-* Log levels
-
+Changed
+Removed
 
 <!-- newest-changes -->
+## [0.0.5] - 2016-01-07
+### Added
+* dump-config command
+* improve man page
+* Gitlab API support for creating repos
+### Changed
+* Extracted Github/Gitlab specific functionality to resp. packages
+### Fixed
+* Log levels
+* Extended man page coverage of config defaults / commands
+### Removed
+
 
 ## [0.0.4] - 2015-12-25
 Added
@@ -55,6 +64,7 @@ Added
 * Initial commit
 
 <!-- link-labels -->
+[0.0.5]: ../../compare/v0.0.4...v0.0.5
 [0.0.4]: ../../compare/v0.0.3...v0.0.4
 [0.0.3]: ../../compare/v0.0.2...v0.0.3
 [0.0.2]: ../../compare/v0.0.1...v0.0.2

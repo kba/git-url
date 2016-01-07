@@ -31,7 +31,7 @@ $(SCRIPT_NAME): $(SCRIPT_NAME).pl Makefile
 	@$(CHMOD_AX) $@
 
 # Man page
-%.1: %.1.md has-pandoc has-envsubst
+%.1: %.1.md $(SCRIPT_NAME) has-pandoc has-envsubst
 	@echo "'$<' -> '$@'"
 	@eval `./$(SCRIPT_NAME) dump-config |sed 's,$(HOME),~,g'|sed 's/^/export /'` && \
 		cat $< | envsubst \

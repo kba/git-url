@@ -88,6 +88,4 @@ Options and Configuration
 and environment variables. A commented sample configuration is installed to
 `$HOME/.config/git-url/config.ini` on `make install`/`make install-home`.
 
-### fork
-
-### repo_dirs
+See the [man page](./git-url.1.md) for more documentation.

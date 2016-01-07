@@ -6,18 +6,14 @@ our $VERSION     = "__VERSION__";
 our $BUILD_DATE  = "__BUILD_DATE__";
 our $LAST_COMMIT = "__LAST_COMMIT__";
 
-package RepoLocator;
+package HELPER;
 use strict;
 use warnings;
-use Data::Dumper;
-$Data::Dumper::Terse = 1;
-use File::Path qw(make_path);
 use Term::ANSIColor;
+use File::Path qw(make_path);
 use File::Basename qw(dirname);
 use File::Spec::Functions qw(rel2abs);
-
 our $DEBUG = 0;
-our $CONFIG_FILE = join('/', $ENV{HOME}, '.config', $SCRIPT_NAME, 'config.ini');
 
 #---------
 #
@@ -33,74 +29,74 @@ my $__log_levels = {
     'off'   => -1
 };
 
-sub __log {
+sub _log {
     my @msgs = @{shift @_};
     my ($levelName, $minLevel, $color) = @_;
-    if ($DEBUG >= $minLevel) {
+    if ($HELPER::DEBUG >= $minLevel) {
         printf("[%s] %s\n", colored($levelName, $color), sprintf(shift(@msgs), @msgs));
     }
 }
-sub _log_trace { __log(\@_, "TRACE", 3, 'bold yellow'); }
-sub _log_debug { __log(\@_, "DEBUG", 2, 'bold blue'); }
-sub _log_info  { __log(\@_, "INFO", 1, 'bold green'); }
-sub _log_error { __log(\@_, "ERROR", 0, 'bold red'); }
-sub _log_die   { _log_error(\@_); exit 70; }
-sub _require_config {
+sub log_trace { _log(\@_, "TRACE", 3, 'bold yellow'); }
+sub log_debug { _log(\@_, "DEBUG", 2, 'bold blue'); }
+sub log_info  { _log(\@_, "INFO", 1, 'bold green'); }
+sub log_error { _log(\@_, "ERROR", 0, 'bold red'); }
+sub log_die   { log_error(@_); exit 70; }
+sub require_config {
     my ($config, @keys) = @_;
     my $die_flag;
     for my $key (@keys) {
         unless (defined $config->{$key}) {
-            _log_error("This feature requires the '$key' config setting to be set.");
+            log_error("This feature requires the '$key' config setting to be set.");
             $die_flag = 1;
         }
     }
-    _log_die("Unmet config requirements") if $die_flag;
+    log_die("Unmet config requirements") if $die_flag;
 }
-sub _require_location {
+sub require_location {
     my ($location, @keys) = @_;
     my $die_flag;
     for my $key (@keys) {
         unless (defined $location->{$key}) {
-            _log_die("This feature requires the '$key' location information but it wasn't detected.");
+            log_die("This feature requires the '$key' location information but it wasn't detected.");
             $die_flag = 1;
         }
     }
-    _log_die("Unmet location requirements") if $die_flag;
+    log_die("Unmet location requirements") if $die_flag;
 }
 
 #---------
 #
-# Helpers
+# HELPER
 #
 #---------
 
-sub _chdir {
+sub chdir {
     my $dir = shift;
-    _log_debug("cd $dir");
+    log_debug("cd $dir");
     chdir $dir;
 }
 
-sub _system {
+sub system {
     my $cmd = shift;
-    _log_debug("$cmd");
+    log_debug("$cmd");
     return system($cmd);
 }
 sub _qx {
     my $cmd = shift;
-    _log_debug("$cmd");
+    log_debug("$cmd");
     return qx($cmd);
 }
 sub _mkdirp {
     my $dir = shift;
-    _log_trace("mkdir -p $dir");
+    log_trace("mkdir -p $dir");
     make_path($dir);
 }
 
 sub _slurp {
-    my $filename = shift;
-    _log_trace("cat $filename");
+    my ($filename) = shift;
+    log_trace("cat $filename");
     if (! -r $filename) {
-        _log_die("File '$filename' doesn't exist or isn't readable.");
+        log_die("File '$filename' doesn't exist or isn't readable.");
     }
     open my $handle, '<', $filename;
     chomp(my @lines = <$handle>);
@@ -111,24 +107,130 @@ sub _slurp {
 sub _git_dir_for_filename {
     my $path = shift;
     if (! -d $path) {
-        _chdir(dirname($path));
+        HELPER::chdir(dirname($path));
     } else {
-        _chdir($path);
+        HELPER::chdir($path);
     }
     my $dir = _qx('git rev-parse --show-toplevel 2>&1');
     chomp($dir);
     if ($? > 0) {
-        _log_error($dir);
+        log_error($dir);
     }
     return $dir;
 }
+
+package RepoLocator::Plugin::Github;
+use strict;
+use warnings;
+
+sub to_url {
+    my ($cls, $self, $path) = @_;
+    if (index($path, '/') == -1) {
+        HELPER::require_config($self->{config}, 'github_user');
+        HELPER::log_debug("Prepending " . $self->{config}->{github_user});
+        $path = join('/', $self->{config}->{github_user}, $path);
+    }
+    return "https://github.com/$path";
+}
+
+sub create_repo {
+    my ($cls, $self) = @_;
+    HELPER::require_config($self->{config}, 'github_user', 'github_token');
+    HELPER::require_location($self, 'repo_name');
+    if ($self->{owner} ne $self->{config}->{github_user}) {
+        return HELPER::log_info(sprintf(
+                "Can only create repos for %s, not %s",
+                $self->{owner},
+                $self->{config}->{github_user}));
+    }
+    my $api_url = join('/', $self->{config}->{github_api}, 'user', 'repos');
+    my $user = $self->{config}->{github_user};
+    my $token = $self->{config}->{github_token};
+    my $forkCmd = join(' ', 'curl', '-i', '-s',
+        "-u $user:$token",
+        '-d ', sprintf(q('{"name": "%s"}'), $self->{repo_name}),
+        '-XPOST',
+        $api_url
+    );
+    my $resp = HELPER::_qx($forkCmd);
+    if ([split("\n", $resp)]->[0] !~ 201) {
+        HELPER::log_die("Failed to create the repo: $resp");
+    }
+    $self->{owner} = $user;
+}
+
+sub fork_repo {
+    my ($cls, $self) = @_;
+    HELPER::require_config($self->{config}, 'github_user', 'github_token');
+    if ($self->{owner} eq $self->{config}->{github_user}) {
+        HELPER::log_info("Not forking an owned repository");
+        return;
+    }
+    my $api_url = join('/', $self->{config}->{github_api}, 'repos', $self->{owner}, $self->{repo_name}, 'forks');
+    my $user = $self->{config}->{github_user};
+    my $token = $self->{config}->{github_token};
+    my $forkCmd = join(' ', 'curl', '-i', '-s',
+        "-u $user:$token",
+        '-XPOST',
+        $api_url
+    );
+    my $resp = HELPER::_qx($forkCmd);
+    if ([split("\n", $resp)]->[0] !~ 202) {
+        HELPER::log_die("Failed to fork the repo: $resp");
+    }
+    $self->{owner} = $user;
+}
+
+package RepoLocator::Plugin::Gitlab;
+use strict;
+use warnings;
+
+sub to_url {
+    my ($cls, $self, $path) = @_;
+    if (index($path, '/') == -1) {
+        HELPER::require_config($self->{config}, 'gitlab_user');
+        HELPER::log_debug("Prepending " . $self->{config}->{gitlab_user});
+        $path = join('/', $self->{config}->{gitlab_user}, $path);
+    }
+    return "https://gitlab.com/$path";
+}
+sub create_repo {
+    my ($cls, $self) = @_;
+    HELPER::require_config($self->{config}, 'gitlab_token');
+    HELPER::require_location($self, 'repo_name');
+    my $api_url = join('/', $self->{config}->{gitlab_api}, 'projects');
+    my $user = $self->{config}->{gitlab_user};
+    my $token = $self->{config}->{gitlab_token};
+    my $forkCmd = join(' ',
+        'curl',
+        '-i',
+        '-s',
+        '-H', join(':', 'PRIVATE-TOKEN', $token),
+        '-X', 'POST',
+        '-F', join('=', 'name', $self->{repo_name}),
+        $api_url,
+    );
+    my $resp = HELPER::_qx($forkCmd);
+    if ($resp !~ /201 Created/) {
+        HELPER::log_die("Failed to create the repo: $resp");
+    }
+    $self->{owner} = $user;
+
+}
+
+package RepoLocator;
+use strict;
+use warnings;
+use Data::Dumper;
+$Data::Dumper::Terse = 1;
+our $CONFIG_FILE = join('/', $ENV{HOME}, '.config', $SCRIPT_NAME, 'config.ini');
+
 
 #------------------------------------------------
 #
 # Config
 #
 #------------------------------------------------
-##config
 
 my $default_config = {
     base_dir     => $ENV{GITDIR}      || $ENV{HOME} . '/build',
@@ -137,12 +239,16 @@ my $default_config = {
     browser      => $ENV{BROWSER}     || 'chromium',
     shell        => $ENV{SHELL}       || 'bash',
     debug        => $ENV{LOGLEVEL}    || 'error',
+    github_api   => 'https://api.github.com',
     github_user  => $ENV{GITHUB_USER},
     github_token => $ENV{GITHUB_TOKEN},
-    github_api   => 'https://api.github.com',
+    gitlab_api   => 'https://gitlab.com/api/v3',
+    gitlab_user  => $ENV{GITLAB_USER},
+    gitlab_token => $ENV{GITLAB_TOKEN},
     clone_opts   => '--depth 1',
     prefer_ssh   => 1,
     fork         => undef,
+    clone        => 'github.com',
     create       => undef,
     no_local     => undef,
 };
@@ -155,7 +261,7 @@ sub _load_config {
     my $cli_config = shift;
     my $config = $default_config;
     if (-r $CONFIG_FILE) {
-        my @lines = @{_slurp $CONFIG_FILE};
+        my @lines = @{HELPER::_slurp($CONFIG_FILE)};
         for (@lines) {
             s/^\s+|\s+$//g;
             next if (/^$/ || /^[#;]/);
@@ -171,9 +277,9 @@ sub _load_config {
         $config->{$k} = $v;
     }
     # set log level
-    $DEBUG = $__log_levels->{$config->{debug}};
+    $HELPER::DEBUG = $__log_levels->{$config->{debug}};
     # make sure base_dir exists
-    _mkdirp($config->{base_dir});
+    HELPER::_mkdirp($config->{base_dir});
     return $config;
 }
 
@@ -215,33 +321,24 @@ sub _edit_command {
     return $cmd;
 }
 
-sub _parse_github {
-    my ($self, $path) = @_;
-    _log_info("Interpreting '$path' as Github shortcut");
-    if (index($path, '/') == -1) {
-        _require_config($self->{config}, 'github_user');
-        _log_debug("Prepending " . $self->{config}->{github_user});
-        $path = $self->{config}->{github_user} . '/' . $path;
-    }
-    return $self->_parse_url("https://github.com/$path");
-}
-
 sub _parse_filename {
     my ($self, $path) = @_;
-    _log_trace("Parsing filename $path");
+    HELPER::log_trace("Parsing filename $path");
     unless ($path) {
-        _log_die("No path given");
+        HELPER::log_die("No path given");
     }
     # split path into filename:line:column
     ($path, $self->{line}, $self->{column}) = split(':', $path);
     if (! -e $path) {
-        _log_info("No such file/directory: $path");
-        return $self->_parse_github($path);
+        HELPER::log_info("No such file/directory: $path");
+        HELPER::log_info(sprintf("Interpreting '%s' as '%s' shortcut", $path, $self->{config}->{clone}));
+        return $self->_parse_url(
+            $self->{host_plugins}->{$self->{config}->{clone}}->to_url($self, $path));
     }
     $path = rel2abs($path);
-    my $dir = _git_dir_for_filename($path);
+    my $dir = HELPER::_git_dir_for_filename($path);
     unless ($dir) {
-        _log_die("Not in a Git dir: '$path'");
+        HELPER::log_die("Not in a Git dir: '$path'");
     }
     $self->{path_to_repo} = $dir;
     $self->{path_within_repo} = substr($path, length($dir)) || '.';
@@ -262,14 +359,14 @@ sub _parse_filename {
         }
     }
     if (! $baseURL) {
-        _log_die("Couldn't find a remote");
+        HELPER::log_die("Couldn't find a remote");
     }
     $self->_parse_url($baseURL);
 }
 
 sub _parse_url {
     my ($self, $url) = @_;
-    _log_trace("Parsing URL: $url");
+    HELPER::log_trace("Parsing URL: $url");
     $self->{url} = $url;
     $url =~ s,^(https?://|git@),,;
     $url =~ s,:,/,;
@@ -288,10 +385,14 @@ sub _parse_url {
 
 sub _set_clone_url {
     my ($self) = @_;
-    _log_trace("Setting clone URL");
-    _require_location($self, 'host', 'owner', 'repo_name');
-    if ($self->{host} =~ /github/) {
-        if ($self->{owner} eq $self->{config}->{github_user} && $self->{config}->{prefer_ssh}) {
+    HELPER::log_trace("Setting clone URL");
+    HELPER::require_location($self, 'host', 'owner', 'repo_name');
+    if ($self->{host} =~ /github|gitlab/) {
+        if ($self->{config}->{prefer_ssh} && (
+                $self->{owner} eq $self->{config}->{github_user}
+                ||
+                $self->{owner} eq $self->{config}->{gitlab_user}
+            )) {
             $self->{clone_url} = $self->_get_clone_url_ssh_owner_reponame();
         } else {
             $self->{clone_url} = $self->_get_clone_url_https_owner_reponame()
@@ -303,7 +404,8 @@ sub _set_clone_url {
 
 sub _set_browse_url {
     my ($self) = @_;
-    _log_trace("Setting browse URL");
+    HELPER::log_trace("Setting browse URL");
+    HELPER::require_location($self, 'host', 'owner', 'repo_name', 'path_within_repo');
     $self->{browse_url} = 'https://' .  join('/',
         $self->{host},
         $self->{owner},
@@ -320,11 +422,11 @@ sub _set_browse_url {
 
 sub _find_in_repo_dirs {
     my $self = shift;
-    _log_trace("Looking for %s in repo_dirs", $self->{repo_name});
+    HELPER::log_trace("Looking for %s in repo_dirs", $self->{repo_name});
     for my $dir (@{$self->{config}->{repo_dirs}}, $self->{config}->{base_dir}) {
-        _log_trace("Checking repo_dir $dir");
+        HELPER::log_trace("Checking repo_dir $dir");
         if (! -d $dir) {
-            _log_error("Not a directory (in repo_dirs): $dir");
+            HELPER::log_error("Not a directory (in repo_dirs): $dir");
             warn Dumper $self->{config}->{repo_dirs};
         }
         my @candidates = (
@@ -334,8 +436,8 @@ sub _find_in_repo_dirs {
         );
         for my $candidate (@candidates) {
             $candidate = "$dir/$candidate";
-            _log_trace("Trying candidate $candidate");
-            if (-d $candidate && _git_dir_for_filename($candidate) eq $candidate) {
+            HELPER::log_trace("Trying candidate $candidate");
+            if (-d $candidate && HELPER::_git_dir_for_filename($candidate) eq $candidate) {
                 $self->{path_to_repo} = $candidate;
                 return;
             }
@@ -345,89 +447,48 @@ sub _find_in_repo_dirs {
 
 sub _create_repo {
     my ($self) = @_;
-    _require_location($self, 'host', 'owner', 'repo_name');
-    if ($self->{host} ne 'github.com') {
-        _log_die("Creating repos only supported for Github currently.");
+    HELPER::require_location($self, 'host', 'owner', 'repo_name');
+    if ($self->{host_plugins}->{$self->{config}->{create}}) {
+        $self->{host_plugins}->{$self->{config}->{create}}->create_repo($self);
+    } else {
+        HELPER::log_die("Creating repos only supported for [" + join(', ', keys(%{$self->{host_plugins}})) . "] currently.");
     }
-    _require_config($self->{config}, 'github_user', 'github_token');
-    if ($self->{owner} ne $self->{config}->{github_user}) {
-        return _log_info(sprintf(
-                "Can only create repos for %s, not %s",
-                $self->{owner},
-                $self->{config}->{github_user}));
-    }
-    my $api_url = join('/',
-        $self->{config}->{github_api}, 'user', 'repos');
-    my $user = $self->{config}->{github_user};
-    my $token = $self->{config}->{github_token};
-    my $forkCmd = join(' ',
-        'curl',
-        '-i',
-        '-s',
-        "-u $user:$token",
-        '-d ', sprintf(q('{"name": "%s"}'), $self->{repo_name}),
-        '-XPOST',
-        $api_url
-    );
-    my $resp = _qx($forkCmd);
-    if ([split("\n", $resp)]->[0] !~ 201) {
-        _log_die("Failed to create the repo: $resp");
-    }
-    $self->{owner} = $user;
     $self->_reset_urls();
 }
+
 sub _fork_repo {
     my ($self) = @_;
-    _require_location($self, 'host', 'owner', 'repo_name');
-    _require_config($self->{config}, 'github_user', 'github_token');
-    if ($self->{host} ne 'github.com') {
-        _log_die("Forking only supported for Github currently.");
+    HELPER::require_location($self, 'host', 'owner', 'repo_name');
+    if ($self->{host_plugins}->{$self->{host}}) {
+        $self->{host_plugins}->{$self->{host}}->fork_repo($self);
+    } else {
+        HELPER::log_die("Forking only supported for Github and Gitlab currently.");
     }
-    if ($self->{owner} eq $self->{config}->{github_user}) {
-        _log_info("Not forking an owned repository");
-        return;
-    }
-    my $api_url = join('/', $self->{config}->{github_api}, 'repos', $self->{owner}, $self->{repo_name}, 'forks');
-    my $user = $self->{config}->{github_user};
-    my $token = $self->{config}->{github_token};
-    my $forkCmd = join(' ',
-        'curl',
-        '-i',
-        '-s',
-        "-u $user:$token",
-        '-XPOST',
-        $api_url
-    );
-    my $resp = _qx($forkCmd);
-    if ([split("\n", $resp)]->[0] !~ 202) {
-        _log_die("Failed to fork the repo: $resp");
-    }
-    $self->{owner} = $user;
     $self->_reset_urls();
 }
 
 sub _clone_repo {
     my ($self) = @_;
-    _require_location($self, 'host', 'owner', 'repo_name');
+    HELPER::require_location($self, 'host', 'owner', 'repo_name');
     if ($self->{path_to_repo} && !$self->{config}->{no_local}) {
-        _log_info("We already have a path to this one, not cloning to base_dir");
+        HELPER::log_info(sprintf("We already have a path to this one (%s), not cloning to base_dir", $self->{path_to_repo}));
         return;
     }
     if ($self->{config}->{fork}) {
         $self->_fork_repo();
     }
     my $ownerDir = join('/', $self->{config}->{base_dir}, $self->{host}, $self->{owner});
-    _mkdirp($ownerDir);
-    _chdir $ownerDir;
+    HELPER::_mkdirp($ownerDir);
+    HELPER::chdir($ownerDir);
     my $repoDir = join('/', $ownerDir, $self->{repo_name});
     my $cloneCmd = $self->_clone_command();
     if (! -d $repoDir) {
-        my $output = _system($cloneCmd . ' 2>&1');
+        my $output = HELPER::system($cloneCmd . ' 2>&1');
         if ($? > 0) {
             if ($self->{config}->{create}) {
                 $self->_create_repo();
             } else {
-                _log_die("'$cloneCmd' failed with '$?': " . $output);
+                HELPER::log_die("'$cloneCmd' failed with '$?': " . $output);
             }
         }
     }
@@ -460,8 +521,27 @@ sub new {
 
     my $self = bless {}, $class;
     $self->{args} = \@args;
-
+    $self->{host_plugins} = {
+        'github.com' => 'RepoLocator::Plugin::Github',
+        'gitlab.com' => 'RepoLocator::Plugin::Gitlab',
+    };
     $self->{config} = $self->_load_config($cli_config);
+    for my $key ('create', 'clone', 'fork') {
+        if ($key eq 'create' && $self->{config}->{$key} && $self->{config}->{$key} == 1) {
+            $self->{config}->{$key} = $self->{config}->{clone}
+        }
+        if ($key eq 'fork' && $self->{config}->{$key} && $self->{config}->{fork} ne $self->{config}->{clone}) {
+            HELPER::log_die("Can only fork within a service. Conflicting clone<->fork: ", join('<->',
+                    $self->{config}->{clone},
+                    $self->{config}->{fork}));
+        }
+        my $val = $self->{config}->{$key};
+        if ($val && ! $self->{host_plugins}->{$val}) {
+            HELPER::log_die(sprintf(
+                    "Config: '%s': invalid value '%s'. Allowed: [%s]",
+                    $key, $val, join(', ', keys(%{$self->{host_plugins}}))));
+        }
+    }
     $self->{path_within_repo} = '.';
     $self->{branch} = 'master';
     if ($args[0]) {
@@ -472,10 +552,10 @@ sub new {
         }
         $self->_reset_urls();
     } else {
-        _log_info("No path or URL given");
+        HELPER::log_info("No path or URL given");
     }
-    if ($DEBUG > 1) {
-        _log_trace("Parsed as: ". Dumper $self);
+    if ($HELPER::DEBUG > 1) {
+        HELPER::log_trace("Parsed as: ". Dumper $self);
     }
 
     return $self;
@@ -490,56 +570,56 @@ sub new {
 sub edit {
     my ($self) = @_;
     $self->_clone_repo();
-    _require_location($self, 'path_to_repo');
-    _chdir $self->{path_to_repo};
-    _system $self->_edit_command();
+    HELPER::require_location($self, 'path_to_repo');
+    HELPER::chdir $self->{path_to_repo};
+    HELPER::system $self->_edit_command();
 }
 
 sub url {
     my ($self) = @_;
-    _require_location($self, 'browse_url');
+    HELPER::require_location($self, 'browse_url');
     print $self->{browse_url} . "\n";
 }
 
 sub shell {
     my ($self) = @_;
     $self->_clone_repo();
-    _require_location($self, 'path_to_repo');
-    _chdir $self->{path_to_repo};
-    _system $self->{config}->{shell};
+    HELPER::require_location($self, 'path_to_repo');
+    HELPER::chdir $self->{path_to_repo};
+    HELPER::system $self->{config}->{shell};
 }
 
 sub tmux_ls {
     my $self = @_;
-    _system("tmux ls -F '#{session_name}'");
+    HELPER::system("tmux ls -F '#{session_name}'");
 }
 
 sub tmux {
     my ($self) = @_;
     my $needle = $self->{args}->[0];
-    my ($session) = grep /^$needle/, split("\n", _qx("tmux ls -F '#{session_name}'"));
+    my ($session) = grep /^$needle/, split("\n", HELPER::_qx("tmux ls -F '#{session_name}'"));
     if (! $session) {
         $self->_clone_repo();
-        _require_location($self, 'path_to_repo');
-        _chdir $self->{path_to_repo};
+        HELPER::require_location($self, 'path_to_repo');
+        HELPER::chdir $self->{path_to_repo};
         $session = $self->{repo_name};
     }
-    _system "tmux attach -d -t" . $session;
+    HELPER::system("tmux attach -d -t" . $session);
     if ($?) {
-        _system "tmux new -s " . $session;
+        HELPER::system("tmux new -s " . $session);
     }
 }
 
 sub show {
     my ($self) = @_;
-    _require_location($self, 'path_to_repo');
+    HELPER::require_location($self, 'path_to_repo');
     print $self->{path_to_repo} . "\n";
 }
 
 sub browse {
     my ($self) = @_;
-    _require_location($self, 'browse_url');
-    _system($self->{config}->{browser} . " " . $self->{browse_url});
+    HELPER::require_location($self, 'browse_url');
+    HELPER::system($self->{config}->{browser} . " " . $self->{browse_url});
 }
 
 package main;
