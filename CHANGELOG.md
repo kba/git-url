@@ -11,6 +11,10 @@ Changed
 Removed
 
 <!-- newest-changes -->
+## [0.0.6] - 2016-01-07
+### Fixed
+* rel2abs was in the wrong package
+
 ## [0.0.5] - 2016-01-07
 ### Added
 * dump-config command
@@ -64,6 +68,7 @@ Added
 * Initial commit
 
 <!-- link-labels -->
+[0.0.6]: ../../compare/v0.0.5...v0.0.6
 [0.0.5]: ../../compare/v0.0.4...v0.0.5
 [0.0.4]: ../../compare/v0.0.3...v0.0.4
 [0.0.3]: ../../compare/v0.0.2...v0.0.3

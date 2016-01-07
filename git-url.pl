@@ -12,7 +12,6 @@ use warnings;
 use Term::ANSIColor;
 use File::Path qw(make_path);
 use File::Basename qw(dirname);
-use File::Spec::Functions qw(rel2abs);
 our $DEBUG = 0;
 
 #---------
@@ -222,6 +221,7 @@ package RepoLocator;
 use strict;
 use warnings;
 use Data::Dumper;
+use File::Spec::Functions qw(rel2abs);
 $Data::Dumper::Terse = 1;
 our $CONFIG_FILE = join('/', $ENV{HOME}, '.config', $SCRIPT_NAME, 'config.ini');
 
@@ -345,7 +345,7 @@ sub _parse_filename {
     $self->{path_within_repo} =~ s@^/@@;
 
     my $gitconfig = join('/', $self->{path_to_repo}, '.git', 'config');
-    my @lines = @{_slurp $gitconfig};
+    my @lines = @{HELPER::_slurp $gitconfig};
     my $baseURL;
     OUTER:
     while (my $line = shift(@lines)) {
