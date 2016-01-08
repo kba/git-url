@@ -31,11 +31,9 @@ $(SCRIPT_NAME): $(SCRIPT_NAME).pl Makefile
 	@$(CHMOD_AX) $@
 
 # Man page
-%.1: %.1.md $(SCRIPT_NAME) has-pandoc has-envsubst
+%.1: %.1.md $(SCRIPT_NAME) has-pandoc gendoc.pl
 	@echo "'$<' -> '$@'"
-	@eval `./$(SCRIPT_NAME) dump-config |sed 's,$(HOME),~,g'|sed 's/^/export /'` && \
-		cat $< | envsubst \
-		| $(PANDOC) -o $@
+	cat $< | perl gendoc.pl | $(PANDOC) -o $@
 
 clean:
 	@$(RM) $(SCRIPT_NAME)
@@ -84,12 +82,8 @@ uninstall-config:
 link: $(SCRIPT_NAME)
 	$(LN) $(PWD)/$(SCRIPT_NAME) $(HOME)/.local/bin/$(SCRIPT_NAME)
 
-install-home:
-	$(MAKE) PREFIX=$(HOME)/.local install
-
-uninstall-home:
-	$(MAKE) PREFIX=$(HOME)/.local uninstall
-
+%-home:
+	$(MAKE) PREFIX=$(HOME)/.local $*
 
 #
 # Distribution stuff

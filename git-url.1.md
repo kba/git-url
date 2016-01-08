@@ -31,48 +31,14 @@ such as *~.zshrc* or *~/.zprofile* (for `zsh` (1)) or `~/.bashrc` or
 These are the most common options you should override on the command line as
 necessary
 
---debug[=*LEVEL*], ENV:*DEBUG*, DEFAULT:*"${debug}"*
-:   Specify logging level. Can be one of `trace`, `debug`, `info`
-    or `error`. If no level is specified, defaults to `debug`. If
-    the option is omitted, only errors will be logged.
-
---fork, ENV:*--*, DEFAULT:*${fork}*
-:   Whether remote repositories should be forked before cloning.
-
---create, ENV:*--*, DEFAULT:*${create}*
-:   Whether to create a remote repository if local cloen could not be found.
-
---clone, ENV:*--*, DEFAULT:*${clone}*
-:   Whether or not to clone the repository and if so from what service.
-
---no-local, ENV:*--*, DEFAULT:*${no_local}*
-:   Whether to skip searching a all the directories in `repo_dir` for matching
-    local repos.
-
---prefer-ssh, ENV:*--*, DEFAULT:*${prefer_ssh}*
-:   Whether to prefer ssh URL over HTTP URL if the remote repository is owned
-    by the user. If set to a true value, use *git@host:owner/repo_name* URL over
-    *https://host/owner/repo_name* URL.
+__OPTIONS_COMMON__
 
 ## Preference Options
 
 These settings are best provided via the configuration file (see *FILES*) or
 using environment variables since you won't need to change them often.
 
---browser, ENV:*BROWSER*, DEFAULT:*${browser}*
-:   The web browser to open project landing pages with.
-
---editor, ENV:*EDITOR*, DEFAULT:*${editor}*
-:   The editor to open files with.
-
---base_dir=*BASEDIR*, ENV:*GITDIR*, DEFAULT:*"${base_dir}"*
-:   The base directory to clone repos to and look for them.
-
--shell=*SHELL*, ENV:*SHELL*, DEFAULT:*the calling shell*
-:   The shell to use for opening sub shells.
-
---clone_opts, ENV:*--*, DEFAULT:*"${clone_opts}"*
-:   Additional command line arguments to pass to *git-clone(1)*
+__OPTIONS_PREFS__
 
 ## Remote service options
 
@@ -82,37 +48,11 @@ file (see *FILES*). Currently supported:
 
 * **Github.com**
 
---github-api=*GITHUB_API*, ENV:*--*, DEFAULT:*"${github_api}"*
-:   Base URL of the Github API to use. Meaningful only for Github
-    Enterprise users.
-
---github-user=*GITHUB_USER*, ENV:*GITHUB_USER*, DEFAULT:*-*
-:   Your github user name.
-
---github-token=*GITHUB_TOKEN*, ENV:*GITHUB_TOKEN*, DEFAULT:*-*
-:   Your private Github token. The best place to set this is in a
-    shell startup file. Make sure to keep this private.
-    For a guide on how to set up a private access token, please refer to
-```
-<https://help.github.com/articles/creating-an-access-token-for-command-line-use/>
-```
+__OPTIONS_GITHUB__
 
 * **Gitlab.com**
 
---gitlab-api=*GITLAB_API*, ENV:*--*, DEFAULT:*"${gitlab_api}"*
-:   Base URL of the Gitlab API to use.
-
---gitlab-user=*GITLAB_USER*, ENV:*GITLAB_USER*, DEFAULT:*-*
-:   Your gitlab user name.
-
---gitlab-token=*GITLAB_TOKEN*, ENV:*GITLAB_TOKEN*, DEFAULT:*-*
-:   Your private Gitlab token. The best place to set this is in a
-    shell startup file. Make sure to keep this private.
-
-    You can find your personal access token by browsing to
-```
-<https://gitlab.com/profile/account>
-```
+__OPTIONS_GITLAB__
 
 # LOCATIONS
 
@@ -170,40 +110,7 @@ Examples:
 
 Almost all commands clone on-demand, so they respect the configuration from the *OPTIONS* and *FILES*.
 
-## shell *location*
-
-Clone if necessary and open a shell in the repository.
-
-## browse *location*
-
-Open the location in the browser.
-
-## edit *location*
-
-Open the location in an editor.
-
-Examples:
-
-    git-url edit https://github.com/kba/git-url
-    git-url edit https://github.com/kba/git-url/blob/master/git-url.1.md
-    git-url edit https://github.com/kba/git-url/blob/master/git-url.1.md#L121
-
-## tmux *location*
-
-Clone if necessary and create a new or attach to an existing `tmux(1)`
-session with session name == repo name.
-
-## tmux-ls
-
-List all tmux sessions.
-
-## about
-
-Show version and build information.
-
-## dump-config
-
-Dump the configuration in an easy-to-parse format.
+__COMMANDS__
 
 # FILES
 

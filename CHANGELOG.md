@@ -6,9 +6,14 @@ This project adheres to [Semantic Versioning](http://semver.org/).
 
 ## [unreleased]
 Added
+* Script to generate man page sections
 Fixed
+* Makefile: smarter \*-home target
 Changed
+* Cleaner interface for commands and options
+* Documentation for CLI and man page in code
 Removed
+* Superfluous tmux-ls command (tmux without argument does the same now)
 
 <!-- newest-changes -->
 ## [0.0.7] - 2016-01-07
