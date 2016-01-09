@@ -1,1 +1,4 @@
 /git-url
+/bin
+/man
+/*.bak

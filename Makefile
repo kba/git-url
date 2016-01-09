@@ -18,11 +18,12 @@ PANDOC = pandoc -s -M hyphenate=false -V adjusting=false -t man
 	install install-bin install-man install-config uninstall \
 	install-home uninstall-home
 
-all: $(SCRIPT_NAME) $(SCRIPT_NAME).1
+all: bin/$(SCRIPT_NAME) man/$(SCRIPT_NAME).1
 
 # Script
 LAST_COMMIT = $(shell git log --pretty=format:'%h' -n 1)
-$(SCRIPT_NAME): $(SCRIPT_NAME).pl Makefile
+bin/$(SCRIPT_NAME): $(SCRIPT_NAME).pl Makefile
+	@$(MKDIR) bin
 	@$(CP) $< $@
 	@sed -i 's/__SCRIPT_NAME__/$(SCRIPT_NAME)/' $@
 	@sed -i 's/__VERSION__/$(VERSION)/' $@
@@ -31,16 +32,15 @@ $(SCRIPT_NAME): $(SCRIPT_NAME).pl Makefile
 	@$(CHMOD_AX) $@
 
 # Man page
-%.1: %.1.md $(SCRIPT_NAME) has-pandoc gendoc.pl
-	@echo "'$<' -> '$@'"
-	cat $< | perl gendoc.pl | $(PANDOC) -o $@
+man/%.1: %.1.md $(SCRIPT_NAME) has-pandoc dist/gen-manpage.pl
+	@$(MKDIR) man
+	@cat $< | perl dist/gen-manpage.pl 2>/dev/null| $(PANDOC) -o $@
 
 clean:
-	@$(RM) $(SCRIPT_NAME)
-	@$(RM) $(SCRIPT_NAME).1
+	@$(RM) bin
+	@$(RM) man
 
 # Check for installed programs
-
 has-%:
 	@which $* >/dev/null
 
@@ -49,39 +49,38 @@ check: has-perl has-git
 	@echo "$(MANPATH)" | grep -q '$(MANDIR)' || { echo "MANDIR $(MANDIR) not in your MANPATH!" && exit 1; }
 
 #
-# Install / Uninstall
+# Install
 #
-
-install: install-bin install-config install-man
-
-install-man: $(SCRIPT_NAME).1
-	@$(MKDIR) $(MANDIR)
-	@$(CP) -t $(MANDIR) $(SCRIPT_NAME).1
-
-install-bin: $(SCRIPT_NAME)
+install: bin/$(SCRIPT_NAME) man/$(SCRIPT_NAME).1
 	@$(MKDIR) $(BINDIR)
-	@$(CP) -t $(BINDIR) $(SCRIPT_NAME)
+	@$(CP) -t $(BINDIR) bin/$(SCRIPT_NAME)
+	@$(MKDIR) $(MANDIR)
+	@$(CP) -t $(MANDIR) man/$(SCRIPT_NAME).1
 
 install-config: config.ini
 	@$(MKDIR) $(CONFDIR)
 	@$(CP_SECURE) -t $(CONFDIR) config.ini
 
-uninstall-all: uninstall uninstall-config
+install-all: install install-config
 
-uninstall: uninstall-bin uninstall-man
+link: bin/$(SCRIPT_NAME)
+	$(LN) $(PWD)/bin/$(SCRIPT_NAME) $(BINDIR)/$(SCRIPT_NAME)
 
-uninstall-man:
+#
+# Uninstall
+#
+uninstall:
 	@$(RM) $(MANDIR)/$(SCRIPT_NAME).1
-
-uninstall-bin:
 	@$(RM) $(BINDIR)/$(SCRIPT_NAME)
 
 uninstall-config:
 	@echo "Ctrl-C to keep, enter to delete $(CONFDIR)?" && read x && $(RM) $(CONFDIR)
 
-link: $(SCRIPT_NAME)
-	$(LN) $(PWD)/$(SCRIPT_NAME) $(HOME)/.local/bin/$(SCRIPT_NAME)
+uninstall-all: uninstall uninstall-config
 
+#
+# Home install / uninstall / link
+#
 %-home:
 	$(MAKE) PREFIX=$(HOME)/.local $*
 
