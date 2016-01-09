@@ -1,0 +1,30 @@
+# vim: ft=sh
+
+--nocuddled-else
+--stack-closing-paren
+--closing-token-indentation=0
+# Always break a line after opening token (default).
+--vertical-tightness=2
+--square-bracket-vertical-tightness=0
+--paren-tightness=2
+
+--opening-sub-brace-on-new-line
+
+# Indent level is 4 columns. Perltidy uses spaces by default
+--indent-columns=4
+
+# No maximum line width
+--maximum-line-length=150
+
+# Do not outdent labels.
+--nooutdent-labels
+# Do not outdent comments
+--nooutdent-long-comments
+# Don't outdent long quoted strings
+--nooutdent-long-quotes
+
+--break-at-old-comma-breakpoints
+--break-at-old-ternary-breakpoints
+
+# Errors to STDERR
+-se
