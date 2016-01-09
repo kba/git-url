@@ -128,17 +128,15 @@ sub unindent {
 
 sub human_readable_default {
     my ($val) = @_;
-    return ! defined $val
-        ? '**NONE**'
-        : ref $val && ref $val eq 'ARRAY'
-            ? sprintf("[%s]", join(",", @{$val}))
-            : $val =~ /^1$/
-                ? 'true'
-                : $val =~ /^0$/
-                    ? 'false'
-                    : sprintf('"%s"', $val);
+    return !defined $val
+        ? 'NONE'
+        : ref $val ? ref $val eq 'ARRAY'
+            ? sprintf( "[%s]", join( ",", @{$val} ) )
+            : HELPER::log_die 'Unsupported ref type ' . ref $val
+        : $val =~ /^1$/ ? 'true'
+        : $val =~ /^0$/ ? 'false'
+        :                 sprintf( '"%s"', $val );
 }
-
 
 package RepoLocator::Plugin::Github;
 use strict;
@@ -694,23 +692,6 @@ __PACKAGE__->add_command(
         }
     },
 );
-# __PACKAGE__->add_command(
-#     dump_config => {
-#         name => 'dump-config',
-#         cli_desc => 'dump configuration in an easy to parse way',
-#         do => sub {
-#             my ($self, $cli_config) = @_;
-#             my %config = %{ new RepoLocator([], $cli_config)->{config} };
-#             for my $k (sort keys %config) {
-#                 my $v = $config{$k};
-#                 if (ref($v) eq 'ARRAY') {
-#                     $v = join(',', @{$v});
-#                 }
-#                 printf qq(%s="%s"\n), $k, $v||0;
-#             }
-#         }
-#     }
-# );
 __PACKAGE__->add_command(
     usage => {
         name => 'usage',
@@ -1162,7 +1143,8 @@ sub doMain {
 }
 
 if ($ENV{GIT_URL_SKIP_MAIN}) {
-    warn "Skipping execution of __SCRIPT_NAME__ script because GIT_URL_SKIP_MAIN envvar is set";
+    warn "Skipping execution of __SCRIPT_NAME__ script" .
+         "because GIT_URL_SKIP_MAIN envvar is set";
 } else {
     doMain();
 }
