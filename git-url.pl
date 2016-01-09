@@ -1,5 +1,6 @@
 #!/usr/bin/perl
-use File::Basename qw(basename);
+use strict;
+use warnings;
 
 our $SCRIPT_NAME = "__SCRIPT_NAME__";
 our $VERSION     = "__VERSION__";
@@ -30,17 +31,18 @@ my $__log_levels = {
 
 sub _log
 {
-    my @msgs = @{ shift @_ };
-    my ($levelName, $minLevel, $color) = @_;
+    my ($_msgs, $levelName, $minLevel, $color) = @_;
+    my @msgs = @{$_msgs};
     if ($HELPER::DEBUG >= $minLevel) {
         printf("[%s] %s\n", colored($levelName, $color), sprintf(shift(@msgs), @msgs));
     }
+    return;
 }
-sub log_trace { _log(\@_, "TRACE", 3, 'bold yellow'); }
-sub log_debug { _log(\@_, "DEBUG", 2, 'bold blue'); }
-sub log_info  { _log(\@_, "INFO",  1, 'bold green'); }
-sub log_error { _log(\@_, "ERROR", 0, 'bold red'); }
-sub log_die { $_[1] .= join(' ', caller); log_error(@_); exit 70; }
+sub log_trace { return _log(\@_, "TRACE", 3, 'bold yellow'); }
+sub log_debug { return _log(\@_, "DEBUG", 2, 'bold blue'); }
+sub log_info  { return _log(\@_, "INFO",  1, 'bold green'); }
+sub log_error { return _log(\@_, "ERROR", 0, 'bold red'); }
+sub log_die { $_[1] .= join(' ', caller); log_error(@_); return exit 70; }
 
 sub require_config
 {
@@ -52,7 +54,10 @@ sub require_config
             $die_flag = 1;
         }
     }
-    log_die("Unmet config requirements at" . join(' ', caller)) if $die_flag;
+    if ($die_flag) {
+        log_die("Unmet config requirements at" . join(' ', caller));
+    }
+    return;
 }
 
 sub require_location
@@ -65,7 +70,10 @@ sub require_location
             $die_flag = 1;
         }
     }
-    log_die("Unmet location requirements at " . join(' ', caller)) if $die_flag;
+    if($die_flag) {
+        log_die("Unmet location requirements at " . join(' ', caller)) ;
+    }
+    return;
 }
 
 #---------
@@ -74,14 +82,14 @@ sub require_location
 #
 #---------
 
-sub chdir
+sub _chdir
 {
     my $dir = shift;
     log_debug("cd $dir");
-    chdir $dir;
+    return chdir $dir;
 }
 
-sub system
+sub _system
 {
     my $cmd = shift;
     log_debug("$cmd");
@@ -99,7 +107,7 @@ sub _mkdirp
 {
     my $dir = shift;
     log_trace("mkdir -p $dir");
-    make_path($dir);
+    return make_path($dir);
 }
 
 sub _slurp
@@ -119,10 +127,10 @@ sub _git_dir_for_filename
 {
     my $path = shift;
     if (!-d $path) {
-        HELPER::chdir(dirname($path));
+        HELPER::_chdir(dirname($path));
     }
     else {
-        HELPER::chdir($path);
+        HELPER::_chdir($path);
     }
     my $dir = _qx('git rev-parse --show-toplevel 2>&1');
     chomp($dir);
@@ -135,9 +143,9 @@ sub _git_dir_for_filename
 sub unindent
 {
     my ($amount, $str) = @_;
-    $str =~ s/\n*$//m;
-    $str =~ s/^\n*//m;
-    $str =~ s/^ {$amount}//mg;
+    $str =~ s/\n*$//mx;
+    $str =~ s/^\n*//mx;
+    $str =~ s/^\s{$amount}//mgx;
     return $str;
 }
 
@@ -149,8 +157,8 @@ sub human_readable_default
       : ref $val ? ref $val eq 'ARRAY'
           ? sprintf("[%s]", join(",", @{$val}))
           : HELPER::log_die 'Unsupported ref type ' . ref $val
-      : $val =~ /^1$/ ? 'true'
-      : $val =~ /^0$/ ? 'false'
+      : $val =~ /^1$/mx ? 'true'
+      : $val =~ /^0$/mx ? 'false'
       :                 sprintf('"%s"', $val);
 }
 
@@ -194,6 +202,7 @@ sub init
             default => $ENV{GITHUB_TOKEN},
             tag     => 'github',
         });
+    return;
 }
 
 sub to_url
@@ -234,6 +243,7 @@ sub create_repo
         HELPER::log_die("Failed to create the repo: $resp");
     }
     $self->{owner} = $user;
+    return;
 }
 
 sub fork_repo
@@ -261,6 +271,7 @@ sub fork_repo
         HELPER::log_die("Failed to fork the repo: $resp");
     }
     $self->{owner} = $user;
+    return;
 }
 
 package RepoLocator::Plugin::Gitlab;
@@ -303,6 +314,7 @@ sub init
             default => $ENV{GITLAB_TOKEN},
             tag     => 'gitlab',
         });
+    return;
 }
 
 sub to_url
@@ -336,11 +348,11 @@ sub create_repo
     );
     my $resp = HELPER::_qx($forkCmd);
 
-    if ($resp !~ /201 Created/) {
+    if ($resp !~ /201 Created/mx) {
         HELPER::log_die("Failed to create the repo: $resp");
     }
     $self->{owner} = $user;
-
+    return;
 }
 
 package RepoLocator;
@@ -348,6 +360,7 @@ use strict;
 use warnings;
 use Data::Dumper;
 use File::Spec;
+use Carp qw(croak carp);
 use Term::ANSIColor;
 $Data::Dumper::Terse = 1;
 our $CONFIG_FILE = join('/', $ENV{HOME}, '.config', $SCRIPT_NAME, 'config.ini');
@@ -365,13 +378,14 @@ sub get_option
 
 sub list_options
 {
-    return sort keys %option_doc;
+    my @options = sort keys %option_doc;
+    return wantarray ? @options : \@options;
 }
 
 sub add_option
 {
     my ($cls, $opt_name, $opt) = @_;
-    $option_doc{$opt_name} = $opt;
+    return $option_doc{$opt_name} = $opt;
 }
 
 #==========
@@ -389,13 +403,14 @@ sub get_command
 
 sub list_commands
 {
-    return sort keys %command_doc;
+    my @commands = sort keys %command_doc;
+    return wantarray ? @commands : \@commands;
 }
 
 sub add_command
 {
     my ($cls, $opt_name, $opt) = @_;
-    $command_doc{$opt_name} = $opt;
+    return $command_doc{$opt_name} = $opt;
 }
 
 #=========
@@ -411,14 +426,15 @@ sub get_plugin
 
 sub list_plugins
 {
-    return sort keys %plugin_doc;
+    my @plugins = sort keys %plugin_doc;
+    return wantarray ? @plugins : \@plugins;
 }
 
 sub add_plugin
 {
     my ($cls, $plugin_name, $plugin) = @_;
     $plugin->init($cls);
-    $plugin_doc{$plugin_name} = $plugin;
+    return $plugin_doc{$plugin_name} = $plugin;
 }
 
 #======
@@ -432,7 +448,8 @@ sub list_tags
     for ($cls->list_options()) {
         $ret{ $cls->get_option($_)->{tag} } = 1;
     }
-    return sort keys %ret;
+    my @tags = sort keys %ret;
+    return wantarray ? @tags : \@tags;
 }
 
 #==================
@@ -583,8 +600,8 @@ __PACKAGE__->add_command(
             my ($self) = @_;
             $self->_clone_repo();
             HELPER::require_location($self, 'path_to_repo');
-            HELPER::chdir $self->{path_to_repo};
-            HELPER::system $self->_edit_command();
+            HELPER::_chdir $self->{path_to_repo};
+            HELPER::_system $self->_edit_command();
           }
     },
 );
@@ -610,8 +627,8 @@ __PACKAGE__->add_command(
             my ($self) = @_;
             $self->_clone_repo();
             HELPER::require_location($self, 'path_to_repo');
-            HELPER::chdir $self->{path_to_repo};
-            HELPER::system $self->{config}->{shell};
+            HELPER::_chdir $self->{path_to_repo};
+            HELPER::_system $self->{config}->{shell};
           }
     },
 );
@@ -627,21 +644,21 @@ __PACKAGE__->add_command(
                 print colored("Current tmux sessions:\n", "bold cyan");
                 my $output = HELPER::_qx("tmux ls -F '#{session_name}'");
                 chomp $output;
-                for (split /\n/, $output) {
+                for (split /\n/mx, $output) {
                     print "  * $_\n";
                 }
                 return;
             }
-            my ($session) = grep /^$needle/, split("\n", HELPER::_qx("tmux ls -F '#{session_name}'"));
+            my ($session) = grep /^$needle/mx, split("\n", HELPER::_qx("tmux ls -F '#{session_name}'"));
             if (!$session) {
                 $self->_clone_repo();
                 HELPER::require_location($self, 'path_to_repo');
-                HELPER::chdir $self->{path_to_repo};
+                HELPER::_chdir $self->{path_to_repo};
                 $session = $self->{repo_name};
             }
-            HELPER::system("tmux attach -d -t" . $session);
+            HELPER::_system("tmux attach -d -t" . $session);
             if ($?) {
-                HELPER::system("tmux new -s " . $session);
+                HELPER::_system("tmux new -s " . $session);
             }
           }
     },
@@ -668,7 +685,7 @@ __PACKAGE__->add_command(
         do       => sub {
             my ($self) = @_;
             HELPER::require_location($self, 'browse_url');
-            HELPER::system(join(' ', $self->{config}->{browser}, $self->{browse_url}));
+            HELPER::_system(join(' ', $self->{config}->{browser}, $self->{browse_url}));
           }
     },
 );
@@ -681,9 +698,9 @@ __PACKAGE__->add_command(
         do       => sub {
             my ($self) = @_;
             $_ = $self->{args}->[0];
-            if ($_ && /^-/) {
-                s/^-*//;
-                s/-/_/g;
+            if ($_ && /^-/mx) {
+                s/^-*//mx;
+                s/-/_/gmx;
                 my $opt = __PACKAGE__->get_option($_);
                 if ($opt) {
                     $self->usage_cmd_opt($opt);
@@ -693,7 +710,7 @@ __PACKAGE__->add_command(
                 }
             }
             elsif ($_) {
-                s/-/_/g;
+                s/-/_/gmx;
                 my $cmd = __PACKAGE__->get_command($_);
                 if ($cmd) {
                     $self->usage_cmd_opt($cmd);
@@ -703,7 +720,7 @@ __PACKAGE__->add_command(
                 }
             }
             else {
-                HELPER::system("man __SCRIPT_NAME__");
+                HELPER::_system("man __SCRIPT_NAME__");
             }
           }
     },
@@ -756,13 +773,18 @@ sub _load_config
     if (-r $CONFIG_FILE) {
         my @lines = @{ HELPER::_slurp($CONFIG_FILE) };
         for (@lines) {
-            s/^\s+|\s+$//g;
-            next if (/^$/ || /^[#;]/);
-            my ($k, $v) = split /\s*=\s*/;
+            s/^\s+|\s+$//gmx;
+            next if (/^$/mx || /^[#;]/mx);
+            my ($k, $v) = split /\s*=\s*/mx;
             if ($option_doc{$k}->{array}) {
                 $v = [
-                    map { s/~/$ENV{HOME}/; s/\/$//; $_ }
-                      split(/\s*,\s*/, $v)
+                    map {
+                        my $path = $_;
+                        $path =~ s/~/$ENV{HOME}/mx;
+                        $path =~ s/\/$//mx;
+                        $path;
+                      }
+                      split(/\s*,\s*/mx, $v)
                 ];
             }
             $config->{$k} = $v;
@@ -821,8 +843,8 @@ sub _edit_command
         $self->{config}->{editor},
         $self->{path_within_repo});
     if ($self->{line}) {
-        my ($line) = $self->{line} =~ /(\d+)/;
-        if ($self->{config}->{editor} =~ 'vi') {
+        my ($line) = $self->{line} =~ /(\d+)/mx;
+        if ($self->{config}->{editor} =~ /vi/mx) {
             $cmd .= " +$line";
         }
     }
@@ -851,17 +873,17 @@ sub _parse_filename
     }
     $self->{path_to_repo} = $dir;
     $self->{path_within_repo} = substr($path, length($dir)) || '.';
-    $self->{path_within_repo} =~ s@^/@@;
+    $self->{path_within_repo} =~ s,^/,,mx;
 
     my $gitconfig = join('/', $self->{path_to_repo}, '.git', 'config');
     my @lines = @{ HELPER::_slurp $gitconfig};
     my $baseURL;
     OUTER:
     while (my $line = shift(@lines)) {
-        if ($line =~ /\[remote .origin.\]/) {
+        if ($line =~ /\[remote .origin.\]/mx) {
             while (my $line = shift(@lines)) {
-                if ($line =~ '^\s*url') {
-                    ($baseURL) = $line =~ / = (.*)/;
+                if ($line =~ /^\s*url/mx) {
+                    ($baseURL) = $line =~ / = (.*)/mx;
                     last OUTER;
                 }
             }
@@ -871,6 +893,7 @@ sub _parse_filename
         HELPER::log_die("Couldn't find a remote");
     }
     $self->_parse_url($baseURL);
+    return;
 }
 
 sub _parse_url
@@ -878,13 +901,13 @@ sub _parse_url
     my ($self, $url) = @_;
     HELPER::log_trace("Parsing URL: $url");
     $self->{url} = $url;
-    $url =~ s,^(https?://|git@),,;
-    $url =~ s,:,/,;
-    my @url_parts = split(/\//, $url);
+    $url =~ s,^(https?://|git@),,mx;
+    $url =~ s,:,/,mx;
+    my @url_parts = split(/\//mx, $url);
     $self->{host}      = $url_parts[0];
     $self->{owner}     = $url_parts[1];
     $self->{repo_name} = $url_parts[2];
-    $self->{repo_name} =~ s/\.git$//;
+    $self->{repo_name} =~ s/\.git$//mx;
     ($url_parts[$#url_parts], $self->{line}) = split('#', $url_parts[$#url_parts]);
 
     if ($url_parts[3] && $url_parts[3] eq 'blob') {
@@ -899,7 +922,7 @@ sub _set_clone_url
     my ($self) = @_;
     HELPER::log_trace("Setting clone URL");
     HELPER::require_location($self, 'host', 'owner', 'repo_name');
-    if ($self->{host} =~ /github|gitlab/) {
+    if ($self->{host} =~ /github|gitlab/mx) {
         if ($self->{config}->{prefer_ssh}
             && (   $self->{owner} eq $self->{config}->{github_user}
                 || $self->{owner} eq $self->{config}->{gitlab_user}))
@@ -911,8 +934,9 @@ sub _set_clone_url
         }
     }
     else {
-        die 'Unknown repository tag for ' . Dumper($self->{host});
+        croak 'Unknown repository tag for ' . Dumper($self->{host});
     }
+    return;
 }
 
 sub _set_browse_url
@@ -935,6 +959,7 @@ sub _set_browse_url
             $self->{branch},
             $self->{path_within_repo});
     }
+    return;
 }
 
 sub _find_in_repo_dirs
@@ -945,7 +970,7 @@ sub _find_in_repo_dirs
         HELPER::log_trace("Checking repo_dir $dir");
         if (!-d $dir) {
             HELPER::log_error("Not a directory (in repo_dirs): $dir");
-            warn Dumper $self->{config}->{repo_dirs};
+            carp Dumper $self->{config}->{repo_dirs};
         }
         my @candidates = (
             $self->{repo_name},
@@ -960,6 +985,7 @@ sub _find_in_repo_dirs
             }
         }
     }
+    return;
 }
 
 sub _create_repo
@@ -975,6 +1001,7 @@ sub _create_repo
             join(', ', $self->list_plugins()));
     }
     $self->_reset_urls();
+    return;
 }
 
 sub _fork_repo
@@ -988,6 +1015,7 @@ sub _fork_repo
         HELPER::log_die("Forking only supported for Github and Gitlab currently.");
     }
     $self->_reset_urls();
+    return;
 }
 
 sub _clone_repo
@@ -1006,11 +1034,11 @@ sub _clone_repo
     }
     my $ownerDir = join('/', $self->{config}->{base_dir}, $self->{host}, $self->{owner});
     HELPER::_mkdirp($ownerDir);
-    HELPER::chdir($ownerDir);
+    HELPER::_chdir($ownerDir);
     my $repoDir = join('/', $ownerDir, $self->{repo_name});
     my $cloneCmd = $self->_clone_command();
     if (!-d $repoDir) {
-        my $output = HELPER::system($cloneCmd . ' 2>&1');
+        my $output = HELPER::_system($cloneCmd . ' 2>&1');
         if ($? > 0) {
             if ($self->{config}->{create}) {
                 $self->_create_repo();
@@ -1022,10 +1050,11 @@ sub _clone_repo
         }
     }
     if (!-d $repoDir) {
-        warn "'$cloneCmd' failed silently for " . Dumper($self->{url});
+        carp "'$cloneCmd' failed silently for " . Dumper($self->{url});
         return;
     }
     $self->{path_to_repo} = $repoDir;
+    return;
 }
 
 sub _reset_urls
@@ -1036,6 +1065,7 @@ sub _reset_urls
     unless ($self->{config}->{no_local}) {
         $self->_find_in_repo_dirs();
     }
+    return;
 }
 
 #-------------
@@ -1046,9 +1076,9 @@ sub _reset_urls
 
 sub new
 {
-    my $class      = shift;
-    my @args       = @{ shift @_ };
-    my $cli_config = shift;
+    my ($class, @args) =  @_;
+    shift @args; # remove command
+    my $cli_config = shift @args;
 
     my $self = bless {}, $class;
     $self->{args}   = \@args;
@@ -1079,7 +1109,7 @@ sub new
     $self->{path_within_repo} = '.';
     $self->{branch}           = 'master';
     if ($args[0]) {
-        if ($args[0] =~ /^(https?:|git@)/) {
+        if ($args[0] =~ /^(https?:|git@)/mx) {
             $self->_parse_url($args[0]);
         }
         else {
@@ -1147,11 +1177,12 @@ sub usage_cmd_opt
     }
     if ($cmd->{man_desc}) {
         my $man_desc = $cmd->{man_desc};
-        $man_desc =~ s/^/\t/mg;
+        $man_desc =~ s/^/\t/mgx;
         print colored("\nDescription:\n", 'underline');
         print $man_desc;
         print "\n";
     }
+    return;
 }
 
 sub usage
@@ -1179,21 +1210,27 @@ sub usage
         unless ($opt->{tag}) {
             HELPER::log_die(sprintf("Option '%s' has no tag!", $opt_name));
         }
-        next unless grep { $_ eq $opt->{tag} } @{ $args{tags} };
+        unless (grep { $_ eq $opt->{tag} } @{ $args{tags} }) {
+            next;
+        }
         print "\n\t" . colored($opt->{cli_usage}, 'bold magenta');
         print "  " . $opt->{cli_desc};
-        print colored(sprintf(" [%s]", $opt->{default}), 'bold black') if (defined $opt->{default});
+        if (defined $opt->{default}) {
+            print colored(sprintf(" [%s]", $opt->{default}), 'bold black');
+        }
     }
 
     print colored("\nSubcommands:\n", 'underline');
     for my $cmd_name ($cls->list_commands()) {
         my $cmd = $cls->get_command($cmd_name);
-        $cmd_name =~ s/_/-/g;
+        $cmd_name =~ s/_/-/gmx;
         $cls->usage_cmd_opt($cmd, brief => 1);
     }
+    return;
 }
 
 package main;
+use Carp qw(croak carp);
 
 sub doMain
 {
@@ -1202,7 +1239,7 @@ sub doMain
     my $in_opts    = 0;
     while (my $arg = shift(@ARGV)) {
         if ($arg =~ '^-' && !$in_opts) {
-            $arg =~ s/^-*//;
+            $arg =~ s/^-*//mx;
             my ($k, $v) = split('=', $arg);
             $cli_config->{$k} = $v // 1;
         }
@@ -1212,7 +1249,7 @@ sub doMain
         }
     }
     my $cmd_name = shift(@ARGV_PROCESSED) || 'usage';
-    $cmd_name =~ s/[^a-z0-9]/_/gi;
+    $cmd_name =~ s/[^a-z0-9]/_/gimx;
     my $cmd = RepoLocator->get_command($cmd_name) or do {
         RepoLocator->usage(error => "Unknown command: '$cmd_name'\n");
         exit 1;
@@ -1222,12 +1259,12 @@ sub doMain
         __PACKAGE__->usage_cmd_opt($cmd);
         exit 1;
     }
-    my $self = new RepoLocator(\@ARGV_PROCESSED, $cli_config);
-    $cmd->{do}->($self);
+    my $self = RepoLocator->new(\@ARGV_PROCESSED, $cli_config);
+    return $cmd->{do}->($self);
 }
 
 if ($ENV{GIT_URL_SKIP_MAIN}) {
-    warn "Skipping execution of __SCRIPT_NAME__ script because GIT_URL_SKIP_MAIN envvar is set";
+    carp "Skipping execution of __SCRIPT_NAME__ script because GIT_URL_SKIP_MAIN envvar is set";
 }
 else {
     doMain();
