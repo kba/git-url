@@ -1076,10 +1076,8 @@ sub _reset_urls
 
 sub new
 {
-    my ($class, @args) =  @_;
-    shift @args; # remove command
-    my $cli_config = shift @args;
-
+    my ($class, $_args, $cli_config) =  @_;
+    my @args = @{ $_args };
     my $self = bless {}, $class;
     $self->{args}   = \@args;
     $self->{config} = $self->_load_config($cli_config);
