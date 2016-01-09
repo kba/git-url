@@ -118,9 +118,69 @@ sub _git_dir_for_filename {
     return $dir;
 }
 
+sub unindent {
+    my ($amount, $str) = @_;
+    $str =~ s/\n*$//m;
+    $str =~ s/^\n*//m;
+    $str =~ s/^ {$amount}//mg;
+    return $str;
+}
+
+sub human_readable_default {
+    my ($val) = @_;
+    return ! defined $val
+        ? '**NONE**'
+        : ref $val && ref $val eq 'ARRAY'
+            ? sprintf("[%s]", join(",", @{$val}))
+            : $val =~ /^1$/
+                ? 'true'
+                : $val =~ /^0$/
+                    ? 'false'
+                    : sprintf('"%s"', $val);
+}
+
+
 package RepoLocator::Plugin::Github;
 use strict;
 use warnings;
+
+sub init {
+    my ($cls, $self) = @_;
+    $self->add_option(
+        github_api => {
+            cli_usage => '--github_api=<API URL>',
+            cli_desc => 'Base URL of the Github API to use.',
+            man_desc => 'Base URL of the Github API to use. Meaningful only for Github Enterprise users.',
+            default => 'https://api.github.com',
+            tag => 'github',
+        }
+    );
+    $self->add_option(
+        github_user => {
+            cli_usage => '--github-user=<user name>',
+            cli_desc => 'Your github user name.',
+            env => 'GITHUB_USER',
+            default => $ENV{GITHUB_USER},
+            tag => 'github',
+        }
+    );
+    $self->add_option(
+        github_token => {
+            cli_usage => '--github_token=<token>',
+            cli_desc => 'Your private github token.',
+            man_desc => HELPER::unindent(16, q(
+                Your private github token. the best place to set this is in a shell
+                startup file. Make sure to keep this private.  For a guide on how
+                to set up a private access token, please refer to
+
+                <https://help.github.com/articles/creating-an-access-token-for-command-line-use/>
+            )),
+            env => 'GITHUB_TOKEN',
+            default => $ENV{GITHUB_TOKEN},
+            tag => 'github',
+        }
+    );
+}
 
 sub to_url {
     my ($cls, $self, $path) = @_;
@@ -184,6 +244,44 @@ package RepoLocator::Plugin::Gitlab;
 use strict;
 use warnings;
 
+sub init {
+    my ($cls, $self) = @_;
+    $self->add_option(
+        gitlab_api => {
+            cli_desc => 'Base URL of the Gitlab API to use.',
+            cli_usage => '--gitlab_api=<API URL>',
+            default => 'https://gitlab.com/api/v3',
+            tag => 'gitlab',
+        }
+    );
+    $self->add_option(
+        gitlab_user => {
+            cli_usage => '--gitlab-user=<user>',
+            cli_desc => 'Your Gitlab user name.',
+            env => 'GITLAB_USER',
+            default => $ENV{GITLAB_USER},
+            tag => 'gitlab',
+        }
+    );
+    $self->add_option(
+        gitlab_token => {
+            cli_usage => '--gitlab-token=<token>',
+            cli_desc => 'Your private Gitlab token.',
+            man_desc => HELPER::unindent(16, q(
+                Your private Gitlab token. The best place to set this is in a
+                shell startup file. Make sure to keep this private.
+
+                You can find your personal access token by browsing to
+                ```
+                <https://gitlab.com/profile/account>
+                ```)),
+            env => 'GITLAB_TOKEN',
+            default => $ENV{GITLAB_TOKEN},
+            tag => 'gitlab',
+        }
+    );
+}
+
 sub to_url {
     my ($cls, $self, $path) = @_;
     if (index($path, '/') == -1) {
@@ -226,32 +324,123 @@ use Term::ANSIColor;
 $Data::Dumper::Terse = 1;
 our $CONFIG_FILE = join('/', $ENV{HOME}, '.config', $SCRIPT_NAME, 'config.ini');
 
+#=========
+# Options
+#=========
+my %option_doc = ();
 
-#======================
-# Public API - Config
-#======================
-our %option_doc = (
+sub get_option {
+    my ($cls, $option) = @_;
+    return $option_doc{$option};
+}
+
+sub list_options {
+    return sort keys %option_doc;
+}
+
+sub add_option {
+    my ($cls, $opt_name, $opt) = @_;
+    $option_doc{$opt_name} = $opt;
+}
+
+
+#==========
+# Commands
+#==========
+my %command_doc = ();
+
+sub get_command {
+    my ($cls, $command) = @_;
+    # TODO shortcuts
+    return $command_doc{$command};
+}
+
+sub list_commands {
+    return sort keys %command_doc;
+}
+
+sub add_command {
+    my ($cls, $opt_name, $opt) = @_;
+    $command_doc{$opt_name} = $opt;
+}
+
+
+#=========
+# Plugins
+#=========
+my %plugin_doc =  ();
+
+sub get_plugin {
+    my ($cls, $plugin) = @_;
+    return $plugin_doc{$plugin};
+}
+
+sub list_plugins {
+    return sort keys %plugin_doc;
+}
+
+sub add_plugin {
+    my ($cls, $plugin_name, $plugin) = @_;
+    $plugin->init($cls);
+    $plugin_doc{$plugin_name} = $plugin;
+}
+
+#======
+# Tags
+#======
+
+sub list_tags {
+    my ($cls) = @_;
+    my %ret;
+    for ($cls->list_options()) {
+        $ret{ $cls->get_option($_)->{tag} } = 1;
+    }
+    return sort keys %ret;
+}
+
+#==================
+# Initialize class
+#==================
+
+#
+# add plugins
+#
+__PACKAGE__->add_plugin('github.com' => 'RepoLocator::Plugin::Github');
+__PACKAGE__->add_plugin('gitlab.com' => 'RepoLocator::Plugin::Gitlab');
+
+#
+# add options
+#
+__PACKAGE__->add_option(
     base_dir => {
         env => 'GITDIR',
         cli_desc => 'The base directory to clone repos to and look for them.',
         cli_usage => '--base-dir=<path>',
         default => $ENV{GITDIR} || $ENV{HOME} . '/build',
         tag => 'prefs',
-    },
+    }
+);
+__PACKAGE__->add_option(
     repo_dirs => {
-        env => 'GITDIR_PATH',
-        cli_desc => 'The directories to search for repositories.',
         array => 1,
+        cli_usage => '--repo-dirs=<comma separated dirs>',
+        cli_desc => 'The directories to search for repositories.',
         default => $ENV{GITDIR_PATH} || [],
+        env => 'GITDIR_PATH',
         tag => 'prefs',
-    },
+    }
+);
+__PACKAGE__->add_option(
     editor => {
-        env => 'EDITOR',
         cli_desc => 'The editor to open files with.',
+        cli_usage => '--editor=<path to editor>',
+        default => $ENV{EDITOR} || 'vim',
+        env => 'EDITOR',
         man_usage => '--editor=*BINARY*',
         tag => 'prefs',
-        default => $ENV{EDITOR} || 'vim',
-    },
+    }
+);
+__PACKAGE__->add_option(
     browser => {
         env => 'BROWSER',
         cli_desc => 'The web browser to open URL with.',
@@ -259,136 +448,96 @@ our %option_doc = (
         cli_usage => '--browser=<binary>',
         default => $ENV{BROWSER} || 'chromium',
         tag => 'prefs',
-    },
+    }
+);
+__PACKAGE__->add_option(
     shell => {
         env => 'SHELL',
+        cli_usage => '--shell=<path to shell>',
         man_usage => '--shell=*SHELL*',
         cli_desc => 'The shell to use',
         tag => 'prefs',
         default => $ENV{SHELL} || 'bash',
-    },
+    }
+);
+__PACKAGE__->add_option(
     debug => {
         env => 'LOGLEVEL',
         cli_usage => '--debug[=trace|debug|info|error]',
         cli_desc => 'Log level',
         man_usage => '--debug[=*LEVEL*]',
-        man_desc => q(
+        man_desc => HELPER::unindent(12, q(
             Specify logging level. Can be one of `trace`, `debug`, `info`
             or `error`. If no level is specified, defaults to `debug`. If
             the option is omitted, only errors will be logged.
-        ),
+        )),
         tag => 'common',
         default => $ENV{LOGLEVEL} || 'error',
-    },
-    github_api => {
-        cli_usage => '--github_api=<API URL>',
-        cli_desc => 'Base URL of the Github API to use.',
-        man_desc => 'Base URL of the Github API to use. Meaningful only for Github Enterprise users.',
-        default => 'https://api.github.com',
-        tag => 'github',
-    },
-    github_user => {
-        cli_usage => '--github-user=<user name>',
-        cli_desc => 'Your github user name.',
-        env => 'GITHUB_USER',
-        default => $ENV{GITHUB_USER},
-        tag => 'github',
-    },
-    github_token => {
-        cli_usage => '--github_token=<token>',
-        cli_desc => 'Your private github token.',
-        man_desc => q(
-            Your private github token. the best place to set this is in a shell
-            startup file. Make sure to keep this private.  For a guide on how
-            to set up a private access token, please refer to
-            ```
-            <https://help.github.com/articles/creating-an-access-token-for-command-line-use/>
-            ```
-        ),
-        env => 'GITHUB_TOKEN',
-        default => $ENV{GITHUB_TOKEN},
-        tag => 'github',
-    },
-    gitlab_api => {
-        cli_desc => 'Base URL of the Gitlab API to use.',
-        cli_usage => '--gitlab_api=<API URL>',
-        default => 'https://gitlab.com/api/v3',
-        tag => 'gitlab',
-    },
-    gitlab_user => {
-        cli_usage => '--gitlab-user=<user>',
-        cli_desc => 'Your Gitlab user name.',
-        env => 'GITLAB_USER',
-        default => $ENV{GITLAB_USER},
-        tag => 'gitlab',
-    },
-    gitlab_token => {
-        cli_usage => '--gitlab-token=<token>',
-        cli_desc => 'Your private Gitlab token.',
-        man_desc => q(
-            Your private Gitlab token. The best place to set this is in a
-            shell startup file. Make sure to keep this private.
-
-            You can find your personal access token by browsing to
-            ```
-            <https://gitlab.com/profile/account>
-            ```),
-        env => 'GITLAB_TOKEN',
-        default => $ENV{GITLAB_TOKEN},
-        tag => 'gitlab',
-    },
+    }
+);
+__PACKAGE__->add_option(
     clone_opts => {
         cli_desc => 'Additional arguments to pass to "git clone"',
         cli_usage => '--clone-opts=<arg1 arg2...>',
         default => '--depth 1',
         man_desc => 'Additional command line arguments to pass to *git-clone(1)*',
         tag => 'prefs',
-    },
+    }
+);
+__PACKAGE__->add_option(
     prefer_ssh => {
         cli_desc => 'Whether to prefer "git@" over "https:" URL',
         cli_usage => '--prefer-ssh',
         default => 1,
-        man_desc => q(
+        man_desc => HELPER::unindent(12, q(
             Whether to prefer SSH URL over HTTP URL if the remote repository is owned
             by the user. If set to a true value, use *git@host:owner/repo_name* URL over
             *https://host/owner/repo_name* URL.
-        ),
+        )),
         tag => 'prefs',
-    },
+    }
+);
+__PACKAGE__->add_option(
     fork => {
         cli_desc => 'Whether to fork the repository before cloning.',
         cli_usage => '--fork',
         default => 0,
         tag => 'common',
-    },
+    }
+);
+__PACKAGE__->add_option(
     clone => {
         cli_desc => 'Clone repo from this service.',
         cli_usage => '--clone',
         default => 'github.com',
         tag => 'common',
-    },
+    }
+);
+__PACKAGE__->add_option(
     create => {
         cli_desc => 'Create a new repo if it could not be found',
         cli_usage => '--create',
         default => 0,
         tag => 'common',
-    },
+    }
+);
+__PACKAGE__->add_option(
     no_local => {
         cli_desc => "Don't look for the repo in the directories",
         cli_usage => '--no-local',
         default => 0,
         tag => 'common',
-    },
+    }
 );
 
-#======================
-# Public API - Commands
-#======================
-our %command_doc = (
+#
+# add commands
+#
+__PACKAGE__->add_command(
     edit => {
         name => 'edit',
         cli_desc => 'Edit file at <location>',
-        man_desc => q(
+        man_desc => HELPER::unindent(12, q{
             Open the location in an editor.
 
             Examples:
@@ -396,7 +545,7 @@ our %command_doc = (
                 git-url edit https://github.com/kba/git-url
                 git-url edit https://github.com/kba/git-url/blob/master/git-url.1.md
                 git-url edit https://github.com/kba/git-url/blob/master/git-url.1.md#L121
-        ),
+        }),
         args => [
             { name => 'location', cli_desc => 'Location to edit', required => 1 }
         ],
@@ -409,6 +558,8 @@ our %command_doc = (
             HELPER::system $self->_edit_command();
         }
     },
+);
+__PACKAGE__->add_command(
     url => {
         name => 'url',
         cli_desc => 'Get the URL to this file in the online repository.',
@@ -419,9 +570,14 @@ our %command_doc = (
             print $self->{browse_url} . "\n";
         }
     },
+);
+__PACKAGE__->add_command(
     shell => {
         name => 'shell',
         cli_desc => 'Open a shell in the local repository directory',
+        args => [
+            { name => 'location', cli_desc => 'Location to edit', required => 1 }
+        ],
         tag => 'common',
         do => sub {
             my ($self) = @_;
@@ -431,6 +587,8 @@ our %command_doc = (
             HELPER::system $self->{config}->{shell};
         }
     },
+);
+__PACKAGE__->add_command(
     tmux => {
         name => 'tmux',
         cli_desc => 'Attach to or create a tmux session named like the repository.',
@@ -460,6 +618,8 @@ our %command_doc = (
             }
         }
     },
+);
+__PACKAGE__->add_command(
     show => {
         name => 'show',
         cli_desc => 'Show the path of the local repository.',
@@ -470,12 +630,14 @@ our %command_doc = (
             print $self->{path_to_repo} . "\n";
         }
     },
+);
+__PACKAGE__->add_command(
     browse => {
         name => 'browse',
         cli_desc => 'Open the browser to this file.',
         man_desc => 'Open the browser to this file. Defaults to the current working directory.',
         args => [
-            { name => 'location', cli_desc => 'Location to browse', required => 1 }
+            { name => 'location', cli_desc => 'Location to browse', required => 0 }
         ],
         tag => 'common',
         do => sub {
@@ -484,24 +646,42 @@ our %command_doc = (
             HELPER::system(join(' ', $self->{config}->{browser}, $self->{browse_url}));
         }
     },
+);
+__PACKAGE__->add_command(
     help => {
         name => 'help',
         cli_desc => 'Open help for subcommand or man page',
         tag => 'common',
         args => [
-            { name => 'command', cli_desc => 'Command to look up', required => 0 }
+            { name => 'command or option', cli_desc => 'Command to look up', required => 0 }
         ],
         do => sub {
             my ($self) = @_;
-            my $cmd_name = $self->{args}->[0];
-            if ($cmd_name) {
-                my $cmd = $RepoLocator::command_doc{$cmd_name};
-                $self->usage_cmd($cmd);
+            $_ = $self->{args}->[0];
+            if ($_ && /^-/) {
+                s/^-*//;
+                s/-/_/g;
+                my $opt = __PACKAGE__->get_option($_);
+                if ($opt) {
+                    $self->usage_cmd_opt($opt);
+                } else {
+                    $self->usage(error => "No such option: " . $self->{args}->[0]);
+                }
+            } elsif ($_) {
+                s/-/_/g;
+                my $cmd = __PACKAGE__->get_command($_);
+                if ($cmd) {
+                    $self->usage_cmd_opt($cmd);
+                } else {
+                    $self->usage(error => "No such option: " . $self->{args}->[0]);
+                }
             } else {
                 HELPER::system("man __SCRIPT_NAME__");
             }
         }
     },
+);
+__PACKAGE__->add_command(
     version => {
         name => 'version',
         cli_desc => 'Show version information and such',
@@ -513,22 +693,48 @@ our %command_doc = (
             print colored('Last commit: ', 'white bold') . "https://github.com/kba/$SCRIPT_NAME/commit/$LAST_COMMIT\n";
         }
     },
-    dump_config => {
-        name => 'dump-config',
-        cli_desc => 'dump configuration in an easy to parse way',
+);
+# __PACKAGE__->add_command(
+#     dump_config => {
+#         name => 'dump-config',
+#         cli_desc => 'dump configuration in an easy to parse way',
+#         do => sub {
+#             my ($self, $cli_config) = @_;
+#             my %config = %{ new RepoLocator([], $cli_config)->{config} };
+#             for my $k (sort keys %config) {
+#                 my $v = $config{$k};
+#                 if (ref($v) eq 'ARRAY') {
+#                     $v = join(',', @{$v});
+#                 }
+#                 printf qq(%s="%s"\n), $k, $v||0;
+#             }
+#         }
+#     }
+# );
+__PACKAGE__->add_command(
+    usage => {
+        name => 'usage',
+        cli_desc => 'Show usage',
+        tag => 'common',
+        args => [
+            { name => join('|', 'all', __PACKAGE__->list_tags()), cli_desc => 'Tags to display', required => 0 }
+        ],
         do => sub {
-            my ($self, $cli_config) = @_;
-            my %config = %{ new RepoLocator([], $cli_config)->{config} };
-            for my $k (sort keys %config) {
-                my $v = $config{$k};
-                if (ref($v) eq 'ARRAY') {
-                    $v = join(',', @{$v});
-                }
-                printf qq(%s="%s"\n), $k, $v||0;
+            my ($self) = @_;
+            my @tags = split(',', $self->{args}->[0] // 'common');
+            if (grep {$_ eq 'all' || $_ eq '*'} @tags) {
+                @tags = $self->list_tags;
             }
+            __PACKAGE__->usage(tags => \@tags);
         }
     }
 );
+
+
+#=======================
+# Private API - Instance
+#=======================
+
 sub _load_config {
     my $self = shift;
     my $cli_config = shift;
@@ -609,7 +815,7 @@ sub _parse_filename {
         HELPER::log_info("No such file/directory: $path");
         HELPER::log_info(sprintf("Interpreting '%s' as '%s' shortcut", $path, $self->{config}->{clone}));
         return $self->_parse_url(
-            $self->{host_plugins}->{$self->{config}->{clone}}->to_url($self, $path));
+            $self->get_plugin($self->{config}->{clone})->to_url($self, $path));
     }
     $path = File::Spec->rel2abs($path);
     my $dir = HELPER::_git_dir_for_filename($path);
@@ -724,10 +930,11 @@ sub _find_in_repo_dirs {
 sub _create_repo {
     my ($self) = @_;
     HELPER::require_location($self, 'host', 'owner', 'repo_name');
-    if ($self->{host_plugins}->{$self->{config}->{create}}) {
-        $self->{host_plugins}->{$self->{config}->{create}}->create_repo($self);
+    if ($self->get_plugin($self->{config}->{create})) {
+        $self->get_plugin($self->{config}->{create})->create_repo($self);
     } else {
-        HELPER::log_die("Creating repos only supported for [" + join(', ', keys(%{$self->{host_plugins}})) . "] currently.");
+        HELPER::log_die(sprintf
+            "Creating repos only supported for [%s] currently",  join(', ', $self->list_plugins()));
     }
     $self->_reset_urls();
 }
@@ -735,8 +942,8 @@ sub _create_repo {
 sub _fork_repo {
     my ($self) = @_;
     HELPER::require_location($self, 'host', 'owner', 'repo_name');
-    if ($self->{host_plugins}->{$self->{host}}) {
-        $self->{host_plugins}->{$self->{host}}->fork_repo($self);
+    if ($self->get_plugin($self->{host})) {
+        $self->get_plugin($self->{host})->fork_repo($self);
     } else {
         HELPER::log_die("Forking only supported for Github and Gitlab currently.");
     }
@@ -798,10 +1005,6 @@ sub new {
 
     my $self = bless {}, $class;
     $self->{args} = \@args;
-    $self->{host_plugins} = {
-        'github.com' => 'RepoLocator::Plugin::Github',
-        'gitlab.com' => 'RepoLocator::Plugin::Gitlab',
-    };
     $self->{config} = $self->_load_config($cli_config);
     for my $key ('create', 'clone', 'fork') {
         if ($key eq 'create' && $self->{config}->{$key} && $self->{config}->{$key} == 1) {
@@ -813,10 +1016,10 @@ sub new {
                     $self->{config}->{fork}));
         }
         my $val = $self->{config}->{$key};
-        if ($val && ! $self->{host_plugins}->{$val}) {
+        if ($val && ! $self->get_plugin($val)) {
             HELPER::log_die(sprintf(
                     "Config: '%s': invalid value '%s'. Allowed: [%s]",
-                    $key, $val, join(', ', keys(%{$self->{host_plugins}}))));
+                    $key, $val, join(', ', $self->list_plugins())));
         }
     }
     $self->{path_within_repo} = '.';
@@ -838,15 +1041,20 @@ sub new {
     return $self;
 }
 
-sub usage_cmd {
+sub usage_cmd_opt {
     my ($cls, $cmd, $brief) = @_;
     if ($brief) {
         print "\t";
     } else {
+        print colored("Usage:\n\t", "underline");
         print colored($SCRIPT_NAME , 'bold blue');
         print " ";
     }
-    print colored($cmd->{name}, 'bold green');
+    if ($cmd->{name}) {
+        print colored($cmd->{name}, 'bold green');
+    } else {
+        print colored($cmd->{cli_usage}, 'bold magenta');
+    }
     print " ";
     if ($cmd->{args}) {
         print colored(join(' ', map {
@@ -862,7 +1070,7 @@ sub usage_cmd {
         return;
     }
     if ($cmd->{args}) {
-        print "\n";
+        print colored("Arguments:\n", 'underline');
         for (@{$cmd->{args}}) {
             print "\t";
             print colored($_->{name}, 'bold magenta');
@@ -870,42 +1078,55 @@ sub usage_cmd {
             print $_->{cli_desc};
             if ($_->{required}) {
                 print colored(" REQUIRED", 'bold red');
+            } else {
+                print colored(" OPTIONAL", 'bold green');
             }
         }
+    }
+    if ($cmd->{man_desc}) {
+        my $man_desc = $cmd->{man_desc};
+        $man_desc =~ s/^/\t/mg;
+        print colored("\nDescription:\n", 'underline');
+        print $man_desc;
+        print "\n";
     }
 }
 
 sub usage {
-    my ($cls, $msg, $all) = @_;
-    if ($msg) {
+    my ($cls, %args) = @_;
+    $args{tags} ||= [$cls->list_tags];
+    if ($args{error}) {
         print "\n";
-        print colored('Error: ', 'bold red') . $msg . "\n";
+        print colored('Error: ', 'bold red') . $args{error} . "\n";
         print "\n";
     }
-    print "Usage: ";
+    print colored("Usage:\n", 'underline');
+    print "\t";
     print colored($SCRIPT_NAME, 'bold blue');
     print colored(" [options]", 'bold magenta');
     print colored(" <command>", 'bold green');
     print colored(" <args>", 'bold yellow');
     print "\n";
 
-    print "\nCommon Options:";
-    for my $k (sort keys %RepoLocator::option_doc) {
-        my $v = $RepoLocator::option_doc{$k};
-        unless ($all) {
-            next unless ($v->{tag} && $v->{tag} eq 'common');
+    my $args_joined = join(',', @{$args{tags}});
+    printf colored("Options:", "underline");
+    printf " [%s]", colored($args_joined, 'bold black');
+    for my $opt_name ($cls->list_options()) {
+        my $opt = $cls->get_option($opt_name);
+        unless ($opt->{tag}) {
+            HELPER::log_die(sprintf("Option '%s' has no tag!", $opt_name));
         }
-        print "\n\t" . colored($v->{cli_usage}, 'bold magenta');
-        print "  " . $v->{cli_desc} ;
-        print colored(" [" . $v->{default} . "]", 'bold black') if (defined $v->{default});
+        next unless grep { $_ eq $opt->{tag} } @{ $args{tags} };
+        print "\n\t" . colored($opt->{cli_usage}, 'bold magenta');
+        print "  " . $opt->{cli_desc} ;
+        print colored(sprintf(" [%s]", $opt->{default}), 'bold black') if (defined $opt->{default});
     }
 
-    print "\nCommon Commands:\n";
-    for my $cmd_name (sort keys %RepoLocator::command_doc) {
-        my $cmd = $RepoLocator::command_doc{$cmd_name};
-        next unless ($cmd->{tag} && $cmd->{tag} eq 'common');
+    print colored("\nSubcommands:\n", 'underline');
+    for my $cmd_name ($cls->list_commands()) {
+        my $cmd = $cls->get_command($cmd_name);
         $cmd_name =~ s/_/-/g;
-        RepoLocator->usage_cmd($cmd, 1);
+        $cls->usage_cmd_opt($cmd, brief => 1);
     }
 }
 
@@ -914,27 +1135,26 @@ package main;
 sub doMain {
     my @ARGV_PROCESSED;
     my $cli_config = {};
+    my $in_opts = 0;
     while (my $arg = shift(@ARGV)) {
-        if ($arg =~ '^-') {
+        if ($arg =~ '^-' && ! $in_opts) {
             $arg =~ s/^-*//;
             my ($k, $v) = split('=', $arg);
             $cli_config->{$k} = $v // 1;
         } else {
+            $in_opts = 1;
             push @ARGV_PROCESSED, $arg;
         }
     }
-    my $cmd_name = shift(@ARGV_PROCESSED) or do {
-        RepoLocator->usage("Must specify command");
-        exit 1;
-    };
+    my $cmd_name = shift(@ARGV_PROCESSED) || 'usage';
     $cmd_name =~ s/[^a-z0-9]/_/gi;
-    my $cmd = $RepoLocator::command_doc{$cmd_name} or do {
-        RepoLocator->usage("Unknown command: '$cmd_name'\n");
+    my $cmd = RepoLocator->get_command($cmd_name) or do {
+        RepoLocator->usage(error => "Unknown command: '$cmd_name'\n");
         exit 1;
     };
     if (scalar(grep { $_->{required} } @{$cmd->{args}}) > scalar(@ARGV_PROCESSED)) {
         print colored("Error: ", 'bold red') . "Not enough arguments\n\n";
-        RepoLocator->usage_cmd($cmd);
+        __PACKAGE__->usage_cmd_opt($cmd);
         exit 1;
     }
     my $self = new RepoLocator(\@ARGV_PROCESSED, $cli_config);

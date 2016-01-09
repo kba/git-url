@@ -6,14 +6,18 @@ This project adheres to [Semantic Versioning](http://semver.org/).
 
 ## [unreleased]
 Added
-* Script to generate man page sections
+* Script to generate man page sections, integrated in Makefile
+* Plugins must implement an 'init' function which can add options to the RepoLocator class
 Fixed
 * Makefile: smarter \*-home target
+* Encapsulate access to class fields plugins, commands, options
 Changed
 * Cleaner interface for commands and options
 * Documentation for CLI and man page in code
+* Help for both options and commands
 Removed
 * Superfluous tmux-ls command (tmux without argument does the same now)
+* dump-config not required anymore
 
 <!-- newest-changes -->
 ## [0.0.7] - 2016-01-07

@@ -26,17 +26,17 @@ These environment variables can be set in a shell startup script such as
 These are the most common options you should override on the command
 line as necessary
 .TP
-.B \-\-clone, ENV:\f[I]\-\-\f[], DEFAULT:\f[I]"github.com"\f[]
+.B \-\-clone, ENV:\f[I]\-\-\f[], DEFAULT:"github.com"
 Clone repo from this service.
 .RS
 .RE
 .TP
-.B \-\-create, ENV:\f[I]\-\-\f[], DEFAULT:\f[I]false\f[]
+.B \-\-create, ENV:\f[I]\-\-\f[], DEFAULT:false
 Create a new repo if it could not be found
 .RS
 .RE
 .TP
-.B \-\-debug[=\f[I]LEVEL\f[]], ENV:\f[I]LOGLEVEL\f[], DEFAULT:\f[I]"error"\f[]
+.B \-\-debug[=\f[I]LEVEL\f[]], ENV:\f[I]LOGLEVEL\f[], DEFAULT:"error"
 Specify logging level.
 Can be one of \f[C]trace\f[], \f[C]debug\f[], \f[C]info\f[] or
 \f[C]error\f[].
@@ -45,12 +45,12 @@ If the option is omitted, only errors will be logged.
 .RS
 .RE
 .TP
-.B \-\-fork, ENV:\f[I]\-\-\f[], DEFAULT:\f[I]false\f[]
+.B \-\-fork, ENV:\f[I]\-\-\f[], DEFAULT:false
 Whether to fork the repository before cloning.
 .RS
 .RE
 .TP
-.B \-\-no\-local, ENV:\f[I]\-\-\f[], DEFAULT:\f[I]false\f[]
+.B \-\-no\-local, ENV:\f[I]\-\-\f[], DEFAULT:false
 Don\[aq]t look for the repo in the directories
 .RS
 .RE
@@ -60,27 +60,27 @@ These settings are best provided via the configuration file (see
 \f[I]FILES\f[]) or using environment variables since you won\[aq]t need
 to change them often.
 .TP
-.B \-\-base\-dir=, ENV:\f[I]GITDIR\f[], DEFAULT:\f[I]"$HOME/build"\f[]
+.B \-\-base\-dir=, ENV:\f[I]GITDIR\f[], DEFAULT:"$HOME/build"
 The base directory to clone repos to and look for them.
 .RS
 .RE
 .TP
-.B \-\-browser=\f[I]BINARY\f[], ENV:\f[I]BROWSER\f[], DEFAULT:\f[I]"chromium"\f[]
+.B \-\-browser=\f[I]BINARY\f[], ENV:\f[I]BROWSER\f[], DEFAULT:"chromium"
 The web browser to open URL with.
 .RS
 .RE
 .TP
-.B \-\-clone\-opts=, ENV:\f[I]\-\-\f[], DEFAULT:\f[I]"\-\-depth 1"\f[]
+.B \-\-clone\-opts=, ENV:\f[I]\-\-\f[], DEFAULT:"\-\-depth 1"
 Additional command line arguments to pass to \f[I]git\-clone(1)\f[]
 .RS
 .RE
 .TP
-.B \-\-editor=\f[I]BINARY\f[], ENV:\f[I]EDITOR\f[], DEFAULT:\f[I]"vim"\f[]
+.B \-\-editor=\f[I]BINARY\f[], ENV:\f[I]EDITOR\f[], DEFAULT:"vim"
 The editor to open files with.
 .RS
 .RE
 .TP
-.B \-\-prefer\-ssh, ENV:\f[I]\-\-\f[], DEFAULT:\f[I]true\f[]
+.B \-\-prefer\-ssh, ENV:\f[I]\-\-\f[], DEFAULT:true
 Whether to prefer SSH URL over HTTP URL if the remote repository is
 owned by the user.
 If set to a true value, use \f[I]git\@host:owner/repo_name\f[] URL over
@@ -88,12 +88,12 @@ If set to a true value, use \f[I]git\@host:owner/repo_name\f[] URL over
 .RS
 .RE
 .TP
-.B , ENV:\f[I]GITDIR_PATH\f[], DEFAULT:\f[I][]\f[]
+.B \-\-repo\-dirs=, ENV:\f[I]GITDIR_PATH\f[], DEFAULT:[]
 The directories to search for repositories.
 .RS
 .RE
 .TP
-.B \-\-shell=\f[I]SHELL\f[], ENV:\f[I]SHELL\f[], DEFAULT:\f[I]"bash"\f[]
+.B \-\-shell=\f[I]SHELL\f[], ENV:\f[I]SHELL\f[], DEFAULT:"bash"
 The shell to use
 .RS
 .RE
@@ -106,39 +106,35 @@ Currently supported:
 .IP \[bu] 2
 \f[B]Github.com\f[]
 .TP
-.B \-\-github_api=, ENV:\f[I]\-\-\f[], DEFAULT:\f[I]"https://api.github.com"\f[]
+.B \-\-github_api=, ENV:\f[I]\-\-\f[], DEFAULT:"https://api.github.com"
 Base URL of the Github API to use.
 Meaningful only for Github Enterprise users.
 .RS
 .RE
 .TP
-.B \-\-github_token=, ENV:\f[I]GITHUB_TOKEN\f[], DEFAULT:\f[B]\f[I]NONE\f[]\f[]
+.B \-\-github_token=, ENV:\f[I]GITHUB_TOKEN\f[], DEFAULT:\f[B]NONE\f[]
 Your private github token.
 the best place to set this is in a shell startup file.
 Make sure to keep this private.
 For a guide on how to set up a private access token, please refer to
 .RS
-.IP
-.nf
-\f[C]
-<https://help.github.com/articles/creating\-an\-access\-token\-for\-command\-line\-use/>
-\f[]
-.fi
+.PP
+<https://help.github.com/articles/creating-an-access-token-for-command-line-use/>
 .RE
 .TP
-.B \-\-github\-user=, ENV:\f[I]GITHUB_USER\f[], DEFAULT:\f[B]\f[I]NONE\f[]\f[]
+.B \-\-github\-user=, ENV:\f[I]GITHUB_USER\f[], DEFAULT:\f[B]NONE\f[]
 Your github user name.
 .RS
 .RE
 .IP \[bu] 2
 \f[B]Gitlab.com\f[]
 .TP
-.B \-\-gitlab_api=, ENV:\f[I]\-\-\f[], DEFAULT:\f[I]"https://gitlab.com/api/v3"\f[]
+.B \-\-gitlab_api=, ENV:\f[I]\-\-\f[], DEFAULT:"https://gitlab.com/api/v3"
 Base URL of the Gitlab API to use.
 .RS
 .RE
 .TP
-.B \-\-gitlab\-token=, ENV:\f[I]GITLAB_TOKEN\f[], DEFAULT:\f[B]\f[I]NONE\f[]\f[]
+.B \-\-gitlab\-token=, ENV:\f[I]GITLAB_TOKEN\f[], DEFAULT:\f[B]NONE\f[]
 Your private Gitlab token.
 The best place to set this is in a shell startup file.
 Make sure to keep this private.
@@ -153,7 +149,7 @@ You can find your personal access token by browsing to
 .fi
 .RE
 .TP
-.B \-\-gitlab\-user=, ENV:\f[I]GITLAB_USER\f[], DEFAULT:\f[B]\f[I]NONE\f[]\f[]
+.B \-\-gitlab\-user=, ENV:\f[I]GITLAB_USER\f[], DEFAULT:\f[B]NONE\f[]
 Your Gitlab user name.
 .RS
 .RE
@@ -229,15 +225,12 @@ git\-url\ \-\-github_user=YOURNAME\ \-\-create\ shell\ my\-repository
 .PP
 Almost all commands clone on\-demand, so they respect the configuration
 from the \f[I]OPTIONS\f[] and \f[I]FILES\f[].
-.SS browse <location>
+.SS browse [location]
 .IP \[bu] 2
-\f[I]location\f[] \f[B]REQUIRED\f[] Location to browse
+\f[I]location\f[] \f[I]OPTIONAL\f[] Location to browse
 .PP
 Open the browser to this file.
 Defaults to the current working directory.
-.SS dump\-config
-.PP
-dump configuration in an easy to parse way
 .SS edit <location>
 .IP \[bu] 2
 \f[I]location\f[] \f[B]REQUIRED\f[] Location to edit
@@ -251,14 +244,17 @@ Examples:
 git\-url\ edit\ https://github.com/kba/git\-url
 git\-url\ edit\ https://github.com/kba/git\-url/blob/master/git\-url.1.md
 git\-url\ edit\ https://github.com/kba/git\-url/blob/master/git\-url.1.md#L121
+\ \ \ \ 
 \f[]
 .fi
-.SS help [command]
+.SS help [command or option]
 .IP \[bu] 2
-\f[I]command\f[] \f[I]OPTIONAL\f[] Command to look up
+\f[I]command or option\f[] \f[I]OPTIONAL\f[] Command to look up
 .PP
 Open help for subcommand or man page
-.SS shell
+.SS shell <location>
+.IP \[bu] 2
+\f[I]location\f[] \f[B]REQUIRED\f[] Location to edit
 .PP
 Open a shell in the local repository directory
 .SS show
@@ -270,6 +266,12 @@ Attach to or create a tmux session named like the repository.
 .SS url
 .PP
 Get the URL to this file in the online repository.
+.SS usage [all|common|github|gitlab|prefs]
+.IP \[bu] 2
+\f[I]all|common|github|gitlab|prefs\f[] \f[I]OPTIONAL\f[] Tags to
+display
+.PP
+Show usage
 .SS version
 .PP
 Show version information and such
