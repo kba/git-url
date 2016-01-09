@@ -32,7 +32,7 @@ bin/$(SCRIPT_NAME): $(SCRIPT_NAME).pl Makefile
 	@$(CHMOD_AX) $@
 
 # Man page
-man/%.1: %.1.md $(SCRIPT_NAME) has-pandoc dist/gen-manpage.pl
+man/%.1: %.1.md bin/$(SCRIPT_NAME) has-pandoc dist/gen-manpage.pl
 	@$(MKDIR) man
 	@cat $< | perl dist/gen-manpage.pl 2>/dev/null| $(PANDOC) -o $@
 
