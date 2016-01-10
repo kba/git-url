@@ -713,7 +713,8 @@ sub setup_commands {
     );
     __PACKAGE__->add_command(
         name     => 'tmux',
-        synopsis => 'Attach to or create a tmux session named like the repository.',
+        synopsis => 'Attach to or create a tmux session named like the repo.',
+        args     => [ { name => 'session', synopsis => 'Session to open or none to list all', required => 0 } ],
         tag      => 'common',
         do       => sub {
             my ($self) = @_;
@@ -742,7 +743,8 @@ sub setup_commands {
     );
     __PACKAGE__->add_command(
         name     => 'show',
-        synopsis => 'Show the path of the local repository.',
+        synopsis => 'Show the path of the local repository for a URL',
+        args     => [ { name => 'URL', synopsis => 'URL to show local path for', required => 1 } ],
         tag      => 'common',
         do       => sub {
             my ($self) = @_;
