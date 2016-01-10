@@ -114,7 +114,7 @@ sub _slurp
     if (!-r $filename) {
         log_die("File '$filename' doesn't exist or isn't readable.");
     }
-    open my $handle, '<', $filename;
+    open my $handle, '<', $filename or log_die("Failed to open '$filename' for reading.");
     chomp(my @lines = <$handle>);
     close $handle;
     return \@lines;

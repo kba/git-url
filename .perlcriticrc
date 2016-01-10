@@ -103,6 +103,7 @@ severity   = 2
 severity   = 4
 
 [Perl::Critic::Policy::InputOutput::ProhibitBacktickOperators]
+only_in_void_context = 1
 severity   = 3
 
 [Perl::Critic::Policy::InputOutput::ProhibitBarewordFileHandles]
@@ -186,8 +187,12 @@ severity   = 5
 [Perl::Critic::Policy::Subroutines::ProhibitSubroutinePrototypes]
 severity   = 4
 
+[-Perl::Critic::Policy::Subroutines::ProhibitUnusedPrivateSubroutines]
+[-Perl::Critic::Policy::ValuesAndExpressions::ProhibitImplicitNewlines]
+severity = 3
+
 [Perl::Critic::Policy::Subroutines::ProtectPrivateSubs]
-severity   = 3
+severity   = 1
 
 [Perl::Critic::Policy::Subroutines::RequireFinalReturn]
 severity   = 5
@@ -258,7 +263,7 @@ severity   = 2
 [Perl::Critic::Policy::Variables::ProhibitMatchVars]
 severity   = 4
 
-[Perl::Critic::Policy::Variables::ProhibitPackageVars]
+[-Perl::Critic::Policy::Variables::ProhibitPackageVars]
 severity   = 3
 
 [Perl::Critic::Policy::Variables::ProhibitPunctuationVars]
@@ -275,3 +280,5 @@ severity   = 5
 
 [Perl::Critic::Policy::Variables::RequireNegativeIndices]
 severity   = 4
+
+[-Perl::Critic::Policy::ValuesAndExpressions::ProhibitMagicNumbers]

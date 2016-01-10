@@ -107,304 +107,6 @@ sub list_tags
     return wantarray ? @tags : \@tags;
 }
 
-#==================
-# Initialize class
-#==================
-
-#
-# add plugins
-#
-__PACKAGE__->add_plugin('RepoLocator::Plugin::Github');
-__PACKAGE__->add_plugin('RepoLocator::Plugin::Gitlab');
-
-#
-# add options
-#
-__PACKAGE__->add_option(
-    name => 'base_dir',
-    env       => 'GITDIR',
-    synopsis  => 'The base directory to clone repos to and look for them.',
-    usage     => '--base-dir=<path>',
-    default   => $ENV{GITDIR} || $ENV{HOME} . '/build',
-    tag       => 'prefs',
-);
-__PACKAGE__->add_option(
-    name => 'repo_dirs',
-    csv     => 1,
-    usage => '--repo-dirs=<comma separated dirs>',
-    synopsis  => 'The directories to search for repositories.',
-    default   => $ENV{GITDIR_PATH} || [],
-    env       => 'GITDIR_PATH',
-    tag       => 'prefs',
-);
-__PACKAGE__->add_option(
-    name => 'editor',
-    synopsis  => 'The editor to open files with.',
-    usage => '--editor=<path to editor>',
-    default   => $ENV{EDITOR} || 'vim',
-    env       => 'EDITOR',
-    man_usage => '--editor=*BINARY*',
-    tag       => 'prefs',
-);
-__PACKAGE__->add_option(
-    name => 'browser',
-    env       => 'BROWSER',
-    synopsis  => 'The web browser to open URL with.',
-    man_usage => '--browser=*BINARY*',
-    usage => '--browser=<binary>',
-    default   => $ENV{BROWSER} || 'chromium',
-    tag       => 'prefs',
-);
-__PACKAGE__->add_option(
-    name => 'shell',
-    env       => 'SHELL',
-    usage => '--shell=<path to shell>',
-    man_usage => '--shell=*SHELL*',
-    synopsis  => 'The shell to use',
-    tag       => 'prefs',
-    default   => $ENV{SHELL} || 'bash',
-);
-__PACKAGE__->add_option(
-    name => 'loglevel',
-    env       => 'LOGLEVEL',
-    usage => '--debug[=trace|debug|info|error]',
-    synopsis  => 'Log level',
-    man_usage => '--debug[=*LEVEL*]',
-    long_desc  => HELPER::unindent(
-        12, q(
-        Specify logging level. Can be one of `trace`, `debug`, `info`
-            or `error`. If no level is specified, defaults to `debug`. If
-        the option is omitted, only errors will be logged.
-        )
-    ),
-    tag     => 'common',
-    default => $ENV{LOGLEVEL} || 'error',
-);
-__PACKAGE__->add_option(
-    name => 'clone_opts',
-    synopsis  => 'Additional arguments to pass to "git clone"',
-    usage => '--clone-opts=<arg1 arg2...>',
-    default   => '--depth 1',
-    long_desc  => 'Additional command line arguments to pass to *git-clone(1)*',
-    tag       => 'prefs',
-);
-__PACKAGE__->add_option(
-    name => 'prefer_ssh',
-    synopsis  => 'Whether to prefer "git@" over "https:" URL',
-    usage => '--prefer-ssh',
-    default   => 1,
-    long_desc  => HELPER::unindent(
-        12, q(
-        Whether to prefer SSH URL over HTTP URL if the remote repository is owned
-        by the user. If set to a true value, use *git@host:owner/repo_name* URL over
-        *https://host/owner/repo_usage* URL.
-        )
-    ),
-    tag => 'prefs',
-);
-__PACKAGE__->add_option(
-    name => 'fork',
-    synopsis  => 'Whether to fork the repository before cloning.',
-    usage => '--fork',
-    default   => 0,
-    tag       => 'common',
-);
-__PACKAGE__->add_option(
-    name => 'clone',
-    synopsis  => 'Clone repo from this service.',
-    usage => '--clone',
-    default   => 'github.com',
-    tag       => 'common',
-);
-__PACKAGE__->add_option(
-    name => 'create',
-    synopsis  => 'Create a new repo if it could not be found',
-    usage => '--create',
-    default   => 0,
-    tag       => 'common',
-);
-__PACKAGE__->add_option(
-    name => 'no_local',
-    synopsis  => "Don't look for the repo in the directories",
-    usage => '--no-local',
-    default   => 0,
-    tag       => 'common',
-);
-
-#
-# add commands
-#
-__PACKAGE__->add_command(
-    name      => 'edit',
-    synopsis  => 'Edit file at <location>',
-    long_desc => HELPER::unindent(
-        8, q{
-        Open the location in an editor.
-
-        Examples:
-
-        git-url edit https://github.com/kba/git-url
-        git-url edit https://github.com/kba/git-url/blob/master/git-url.1.md
-        git-url edit https://github.com/kba/git-url/blob/master/git-url.1.md#L121
-        }
-    ),
-    args => [
-        {
-            name     => 'location',
-            synopsis => 'Location to edit',
-            required => 1
-        }
-    ],
-    tag => 'common',
-    do  => sub {
-        my ($self) = @_;
-        $self->_clone_repo();
-        HELPER::require_location( $self, 'path_to_repo' );
-        HELPER::_chdir $self->{path_to_repo};
-        HELPER::_system $self->_edit_command();
-    }
-);
-__PACKAGE__->add_command(
-    name     => 'url',
-    synopsis => 'Get the URL to this file in the online repository.',
-    tag      => 'common',
-    do       => sub {
-        my ($self) = @_;
-        HELPER::require_location($self, 'browse_url');
-        print $self->{browse_url} . "\n";
-    }
-);
-__PACKAGE__->add_command(
-    name     => 'shell',
-    synopsis => 'Open a shell in the local repository directory',
-    args     => [ { name => 'location', synopsis => 'Location to edit', required => 1 } ],
-    tag      => 'common',
-    do       => sub {
-        my ($self) = @_;
-        $self->_clone_repo();
-        HELPER::require_location($self, 'path_to_repo');
-        HELPER::_chdir $self->{path_to_repo};
-        HELPER::_system $self->{config}->{shell};
-    }
-);
-__PACKAGE__->add_command(
-    name     => 'tmux',
-    synopsis => 'Attach to or create a tmux session named like the repository.',
-    tag      => 'common',
-    do       => sub {
-        my ($self) = @_;
-        my $needle = $self->{args}->[0];
-        unless ($needle) {
-            print colored("Current tmux sessions:\n", "bold cyan");
-            my $output = HELPER::_qx("tmux ls -F '#{session_name}'");
-            chomp $output;
-            for (split /\n/mx, $output) {
-                print "  * $_\n";
-            }
-            return;
-        }
-        my ($session) = grep {/^$needle/mx}, split("\n", HELPER::_qx("tmux ls -F '#{session_name}'"));
-        if (!$session) {
-            $self->_clone_repo();
-            HELPER::require_location($self, 'path_to_repo');
-            HELPER::_chdir $self->{path_to_repo};
-            $session = $self->{repo_name};
-        }
-        HELPER::_system("tmux attach -d -t" . $session);
-        if ($?) {
-            HELPER::_system("tmux new -s " . $session);
-        }
-    }
-);
-__PACKAGE__->add_command(
-    name     => 'show',
-    synopsis => 'Show the path of the local repository.',
-    tag      => 'common',
-    do       => sub {
-        my ($self) = @_;
-        HELPER::require_location($self, 'path_to_repo');
-        print $self->{path_to_repo} . "\n";
-    }
-);
-__PACKAGE__->add_command(
-    name     => 'browse',
-    synopsis => 'Open the browser to this file.',
-    long_desc => 'Open the browser to this file. Defaults to the current working directory.',
-    args     => [ { name => 'location', synopsis => 'Location to browse', required => 0 } ],
-    tag      => 'common',
-    do       => sub {
-        my ($self) = @_;
-        HELPER::require_location($self, 'browse_url');
-        HELPER::_system(join(' ', $self->{config}->{browser}, $self->{browse_url}));
-    }
-);
-__PACKAGE__->add_command(
-    name     => 'help',
-    synopsis => 'Open help for subcommand or man page',
-    tag      => 'common',
-    args     => [ { name => 'command or option', synopsis => 'Command to look up', required => 0 } ],
-    do       => sub {
-        my ($self) = @_;
-        $_ = $self->{args}->[0];
-        if ($_ && /^-/mx) {
-            s/^-*//mx;
-            s/-/_/gmx;
-            my $opt = __PACKAGE__->get_option($_);
-            if ($opt) {
-                $opt->print_help()
-            }
-            else {
-                $self->usage(error => "No such option: " . $self->{args}->[0]);
-            }
-        }
-        elsif ($_) {
-            s/-/_/gmx;
-            my $cmd = __PACKAGE__->get_command($_);
-            if ($cmd) {
-                $cmd->print_help()
-            }
-            else {
-                $self->usage(error => "No such command " . $self->{args}->[0]);
-            }
-        }
-        else {
-            HELPER::_system("man $HELPER::SCRIPT_NAME");
-        }
-    }
-);
-__PACKAGE__->add_command(
-    name     => 'version',
-    synopsis => 'Show version information and such',
-    tag      => 'common',
-    do       => sub {
-        my ( $self, $cli_config ) = @_;
-        print colored( $HELPER::SCRIPT_NAME, 'bold blue' );
-        print colored( " v$HELPER::VERSION\n", "bold green" );
-        print colored( 'Build date: ', 'white bold' );
-        print "$HELPER::BUILD_DATE\n";
-        print colored( 'Last commit: ', 'white bold' );
-        printf 'https://github.com/kba/%s/commit/%s\n', $HELPER::SCRIPT_NAME, $HELPER::LAST_COMMIT;
-    }
-);
-__PACKAGE__->add_command(
-    name     => 'usage',
-    synopsis => 'Show usage',
-    tag      => 'common',
-    args     => [
-        {   name     => join('|', 'all', __PACKAGE__->list_tags()), synopsis => 'Tags to display',
-            required => 0
-        }
-    ],
-    do => sub {
-        my ($self) = @_;
-        my @tags = split(',', $self->{args}->[0] // 'common');
-        if (grep { $_ eq 'all' || $_ eq '*' } @tags) {
-            @tags = $self->list_tags;
-        }
-        __PACKAGE__->usage(tags => \@tags);
-    }
-);
-
 #=======================
 # Private API - Instance
 #=======================
@@ -424,15 +126,13 @@ sub _load_config
             next if (/^$/mx || /^[#;]/mx);
             my ($k, $v) = split /\s*=\s*/mx;
             if ($option_doc{$k}->{csv}) {
-                $v = [
-                    map {
-                        my $path = $_;
-                        $path =~ s/~/$ENV{HOME}/mx;
-                        $path =~ s/\/$//mx;
-                        $path;
-                      }
-                      split(/\s*,\s*/mx, $v)
-                ];
+                my @split_values;
+                for (split(/\s*,\s*/mx, $v)) {
+                    s/~/$ENV{HOME}/mx;
+                    s/\/$//mx;
+                    push @split_values, $_;
+                }
+                $v = \@split_values;
             }
             $config->{$k} = $v;
         }
@@ -555,7 +255,7 @@ sub _parse_url
     $self->{owner}     = $url_parts[1];
     $self->{repo_name} = $url_parts[2];
     $self->{repo_name} =~ s/\.git$//mx;
-    ($url_parts[$#url_parts], $self->{line}) = split('#', $url_parts[-1]);
+    ($url_parts[-1], $self->{line}) = split('#', $url_parts[-1]);
 
     if ($url_parts[3] && $url_parts[3] eq 'blob') {
         $self->{branch} = $url_parts[4];
@@ -622,7 +322,8 @@ sub _find_in_repo_dirs
         my @candidates = (
             $self->{repo_name},
             join('/', $self->{owner}, $self->{repo_name}),
-            join('/', $self->{host}, $self->{owner}, $self->{repo_name}));
+            join('/', $self->{host}, $self->{owner}, $self->{repo_name}),
+        );
         for my $candidate (@candidates) {
             $candidate = "$dir/$candidate";
             HELPER::log_trace("Trying candidate $candidate");
@@ -805,5 +506,317 @@ sub usage
     }
     return;
 }
+
+#==================
+# Initialize class
+#==================
+
+#
+# add plugins
+#
+sub setup_plugins {
+    __PACKAGE__->add_plugin('RepoLocator::Plugin::Github');
+    __PACKAGE__->add_plugin('RepoLocator::Plugin::Gitlab');
+    return;
+}
+
+#
+# add options
+#
+sub setup_options {
+    __PACKAGE__->add_option(
+        name => 'base_dir',
+        env       => 'GITDIR',
+        synopsis  => 'The base directory to clone repos to and look for them.',
+        usage     => '--base-dir=<path>',
+        default   => $ENV{GITDIR} || $ENV{HOME} . '/build',
+        tag       => 'prefs',
+    );
+    __PACKAGE__->add_option(
+        name => 'repo_dirs',
+        csv     => 1,
+        usage => '--repo-dirs=<comma separated dirs>',
+        synopsis  => 'The directories to search for repositories.',
+        default   => $ENV{GITDIR_PATH} || [],
+        env       => 'GITDIR_PATH',
+        tag       => 'prefs',
+    );
+    __PACKAGE__->add_option(
+        name => 'editor',
+        synopsis  => 'The editor to open files with.',
+        usage => '--editor=<path to editor>',
+        default   => $ENV{EDITOR} || 'vim',
+        env       => 'EDITOR',
+        man_usage => '--editor=*BINARY*',
+        tag       => 'prefs',
+    );
+    __PACKAGE__->add_option(
+        name => 'browser',
+        env       => 'BROWSER',
+        synopsis  => 'The web browser to open URL with.',
+        man_usage => '--browser=*BINARY*',
+        usage => '--browser=<binary>',
+        default   => $ENV{BROWSER} || 'chromium',
+        tag       => 'prefs',
+    );
+    __PACKAGE__->add_option(
+        name => 'shell',
+        env       => 'SHELL',
+        usage => '--shell=<path to shell>',
+        man_usage => '--shell=*SHELL*',
+        synopsis  => 'The shell to use',
+        tag       => 'prefs',
+        default   => $ENV{SHELL} || 'bash',
+    );
+    __PACKAGE__->add_option(
+        name => 'loglevel',
+        env       => 'LOGLEVEL',
+        usage => '--debug[=trace|debug|info|error]',
+        synopsis  => 'Log level',
+        man_usage => '--debug[=*LEVEL*]',
+        long_desc  => HELPER::unindent(
+            12, q(
+            Specify logging level. Can be one of `trace`, `debug`, `info`
+                or `error`. If no level is specified, defaults to `debug`. If
+            the option is omitted, only errors will be logged.
+            )
+        ),
+        tag     => 'common',
+        default => $ENV{LOGLEVEL} || 'error',
+    );
+    __PACKAGE__->add_option(
+        name => 'clone_opts',
+        synopsis  => 'Additional arguments to pass to "git clone"',
+        usage => '--clone-opts=<arg1 arg2...>',
+        default   => '--depth 1',
+        long_desc  => 'Additional command line arguments to pass to *git-clone(1)*',
+        tag       => 'prefs',
+    );
+    __PACKAGE__->add_option(
+        name => 'prefer_ssh',
+        synopsis  => 'Whether to prefer "git@" over "https:" URL',
+        usage => '--prefer-ssh',
+        default   => 1,
+        long_desc  => HELPER::unindent(
+            12, q(
+            Whether to prefer SSH URL over HTTP URL if the remote repository is owned
+            by the user. If set to a true value, use *git@host:owner/repo_name* URL over
+            *https://host/owner/repo_usage* URL.
+            )
+        ),
+        tag => 'prefs',
+    );
+    __PACKAGE__->add_option(
+        name => 'fork',
+        synopsis  => 'Whether to fork the repository before cloning.',
+        usage => '--fork',
+        default   => 0,
+        tag       => 'common',
+    );
+    __PACKAGE__->add_option(
+        name => 'clone',
+        synopsis  => 'Clone repo from this service.',
+        usage => '--clone',
+        default   => 'github.com',
+        tag       => 'common',
+    );
+    __PACKAGE__->add_option(
+        name => 'create',
+        synopsis  => 'Create a new repo if it could not be found',
+        usage => '--create',
+        default   => 0,
+        tag       => 'common',
+    );
+    __PACKAGE__->add_option(
+        name => 'no_local',
+        synopsis  => "Don't look for the repo in the directories",
+        usage => '--no-local',
+        default   => 0,
+        tag       => 'common',
+    );
+
+    return;
+}
+
+sub setup_commands {
+    #
+    # add commands
+    #
+    __PACKAGE__->add_command(
+        name      => 'edit',
+        synopsis  => 'Edit file at <location>',
+        long_desc => HELPER::unindent(
+            12, q{
+            Open the location in an editor.
+
+            Examples:
+
+            git-url edit https://github.com/kba/git-url
+            git-url edit https://github.com/kba/git-url/blob/master/git-url.1.md
+            git-url edit https://github.com/kba/git-url/blob/master/git-url.1.md#L121
+            }
+        ),
+        args => [
+            {
+                name     => 'location',
+                synopsis => 'Location to edit',
+                required => 1
+            }
+        ],
+        tag => 'common',
+        do  => sub {
+            my ($self) = @_;
+            $self->_clone_repo();
+            HELPER::require_location( $self, 'path_to_repo' );
+            HELPER::_chdir $self->{path_to_repo};
+            HELPER::_system $self->_edit_command();
+        }
+    );
+    __PACKAGE__->add_command(
+        name     => 'url',
+        synopsis => 'Get the URL to this file in the online repository.',
+        tag      => 'common',
+        do       => sub {
+            my ($self) = @_;
+            HELPER::require_location($self, 'browse_url');
+            print $self->{browse_url} . "\n";
+        }
+    );
+    __PACKAGE__->add_command(
+        name     => 'shell',
+        synopsis => 'Open a shell in the local repository directory',
+        args     => [ { name => 'location', synopsis => 'Location to edit', required => 1 } ],
+        tag      => 'common',
+        do       => sub {
+            my ($self) = @_;
+            $self->_clone_repo();
+            HELPER::require_location($self, 'path_to_repo');
+            HELPER::_chdir $self->{path_to_repo};
+            HELPER::_system $self->{config}->{shell};
+        }
+    );
+    __PACKAGE__->add_command(
+        name     => 'tmux',
+        synopsis => 'Attach to or create a tmux session named like the repository.',
+        tag      => 'common',
+        do       => sub {
+            my ($self) = @_;
+            my $needle = $self->{args}->[0];
+            unless ($needle) {
+                print colored("Current tmux sessions:\n", "bold cyan");
+                my $output = HELPER::_qx("tmux ls -F '#{session_name}'");
+                chomp $output;
+                for (split /\n/mx, $output) {
+                    print "  * $_\n";
+                }
+                return;
+            }
+            my ($session) = grep {/^$needle/mx} split("\n", HELPER::_qx("tmux ls -F '#{session_name}'"));
+            if (!$session) {
+                $self->_clone_repo();
+                HELPER::require_location($self, 'path_to_repo');
+                HELPER::_chdir $self->{path_to_repo};
+                $session = $self->{repo_name};
+            }
+            HELPER::_system("tmux attach -d -t" . $session);
+            if ($?) {
+                HELPER::_system("tmux new -s " . $session);
+            }
+        }
+    );
+    __PACKAGE__->add_command(
+        name     => 'show',
+        synopsis => 'Show the path of the local repository.',
+        tag      => 'common',
+        do       => sub {
+            my ($self) = @_;
+            HELPER::require_location($self, 'path_to_repo');
+            print $self->{path_to_repo} . "\n";
+        }
+    );
+    __PACKAGE__->add_command(
+        name     => 'browse',
+        synopsis => 'Open the browser to this file.',
+        long_desc => 'Open the browser to this file. Defaults to the current working directory.',
+        args     => [ { name => 'location', synopsis => 'Location to browse', required => 0 } ],
+        tag      => 'common',
+        do       => sub {
+            my ($self) = @_;
+            HELPER::require_location($self, 'browse_url');
+            HELPER::_system(join(' ', $self->{config}->{browser}, $self->{browse_url}));
+        }
+    );
+    __PACKAGE__->add_command(
+        name     => 'help',
+        synopsis => 'Open help for subcommand or man page',
+        tag      => 'common',
+        args     => [ { name => 'command or option', synopsis => 'Command to look up', required => 0 } ],
+        do       => sub {
+            my ($self) = @_;
+            $_ = $self->{args}->[0];
+            if ($_ && /^-/mx) {
+                s/^-*//mx;
+                s/-/_/gmx;
+                my $opt = __PACKAGE__->get_option($_);
+                if ($opt) {
+                    $opt->print_help()
+                }
+                else {
+                    $self->usage(error => "No such option: " . $self->{args}->[0]);
+                }
+            }
+            elsif ($_) {
+                s/-/_/gmx;
+                my $cmd = __PACKAGE__->get_command($_);
+                if ($cmd) {
+                    $cmd->print_help()
+                }
+                else {
+                    $self->usage(error => "No such command " . $self->{args}->[0]);
+                }
+            }
+            else {
+                HELPER::_system("man $HELPER::SCRIPT_NAME");
+            }
+        }
+    );
+    __PACKAGE__->add_command(
+        name     => 'version',
+        synopsis => 'Show version information and such',
+        tag      => 'common',
+        do       => sub {
+            my ( $self, $cli_config ) = @_;
+            print colored( $HELPER::SCRIPT_NAME, 'bold blue' );
+            print colored( " v$HELPER::VERSION\n", "bold green" );
+            print colored( 'Build date: ', 'white bold' );
+            print "$HELPER::BUILD_DATE\n";
+            print colored( 'Last commit: ', 'white bold' );
+            printf 'https://github.com/kba/%s/commit/%s\n', $HELPER::SCRIPT_NAME, $HELPER::LAST_COMMIT;
+        }
+    );
+    __PACKAGE__->add_command(
+        name     => 'usage',
+        synopsis => 'Show usage',
+        tag      => 'common',
+        args     => [
+            {   name     => join('|', 'all', __PACKAGE__->list_tags()), synopsis => 'Tags to display',
+                required => 0
+            }
+        ],
+        do => sub {
+            my ($self) = @_;
+            my @tags = split(',', $self->{args}->[0] // 'common');
+            if (grep { $_ eq 'all' || $_ eq '*' } @tags) {
+                @tags = $self->list_tags;
+            }
+            __PACKAGE__->usage(tags => \@tags);
+        }
+    );
+    return;
+}
+
+setup_plugins();
+setup_options();
+setup_commands();
 
 1;
