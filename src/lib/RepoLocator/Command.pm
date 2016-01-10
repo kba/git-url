@@ -50,4 +50,31 @@ sub print_usage
     return;
 }
 
+sub to_man
+{
+    my $self = RepoLocator->get_command($_);
+    my $out = '';
+    $out .= "\n";
+    $out .= sprintf('## %s %s',
+        $self->{name},
+        join(' ', map { sprintf( $_->{required} ? "&lt;%s&gt;" : "[%s]", $self->{name}) } @{ $self->{args} })
+    );
+    $out .= "\n\n";
+    for my $arg (@{ $self->{args} }) {
+        $out .= sprintf("* *%s* %s %s\n",
+            $arg->{name},
+            ($arg->{required} ? '**REQ**' : '*OPT*'),
+            $arg->{synopsis}
+        );
+        if ($arg->{long_desc}) {
+            $out .= $arg->{long_desc};
+        }
+    }
+    $out .= "\n";
+    $out .= $self->{long_desc} || $self->{synopsis};
+    $out .= "\n";
+    return $out;
+}
+
+
 1;

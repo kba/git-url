@@ -26,4 +26,48 @@ sub print_usage {
     return;
 }
 
+sub to_man {
+    my ($self) = @_;
+    my $desc = $self->{long_desc} || $self->{synopsis};
+    $desc = ':   ' . $desc;
+    $desc =  join("\n    ", split(/\n/, $desc));
+    my $tpl = <<"EOMAN";
+
+%s, ENV:*%s*, DEFAULT:%s
+
+%s
+
+EOMAN
+    return sprintf( $tpl,
+        $self->{man_usage} || $self->{usage},
+        $self->{env} || '--',
+        HELPER::human_readable_default($self->{default}),
+        $desc
+    );
+}
+
+# ; base_dir: Base directory where projects are stored
+# ; ENV: $GITDIR
+# ; base_dir     = ~/git-projects
+#
+
+sub to_ini
+{
+    my ($self) = shift;
+    my $tpl = <<"EOINI";
+; %s: %s
+; ENV: %s
+; %s = %s
+
+EOINI
+    return sprintf($tpl,
+        $self->{name},
+        $self->{synopsis},
+        $self->{env} || "--",
+        $self->{name},
+        $self->{default} || '',
+    );
+}
+
+
 1;
