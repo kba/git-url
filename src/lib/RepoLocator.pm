@@ -11,6 +11,7 @@ our $CONFIG_FILE = join('/', $ENV{HOME}, '.config', "__SCRIPT_NAME__", 'config.i
 
 use RepoLocator::Command;
 use RepoLocator::Option;
+use RepoLocator::Plugin::Bitbucket;
 use RepoLocator::Plugin::Github;
 use RepoLocator::Plugin::Gitlab;
 
@@ -253,6 +254,13 @@ sub _parse_url
     my @url_parts = split(/\//mx, $url);
     $self->{host}      = $url_parts[0];
     $self->{owner}     = $url_parts[1];
+
+    if ($self->{host} =~ /@/mx) {
+        my ($auth, $host) = split /@/mx, $self->{host};
+        # my ($user, $pass) = split /:/mx, $auth;
+        $self->{host} = $host;
+    }
+
     $self->{repo_name} = $url_parts[2];
     $self->{repo_name} =~ s/\.git$//mx;
     ($url_parts[-1], $self->{line}) = split('#', $url_parts[-1]);
@@ -269,7 +277,7 @@ sub _set_clone_url
     my ($self) = @_;
     HELPER::log_trace("Setting clone URL");
     HELPER::require_location($self, 'host', 'owner', 'repo_name');
-    if ($self->{host} =~ /github|gitlab/mx) {
+    if ($self->{host} =~ /github|gitlab|bitbucket/mx) {
         if ($self->{config}->{prefer_ssh}
             && (   $self->{owner} eq $self->{config}->{github_user}
                 || $self->{owner} eq $self->{config}->{gitlab_user}))
@@ -281,7 +289,7 @@ sub _set_clone_url
         }
     }
     else {
-        croak 'Unknown repository tag for ' . Dumper($self->{host});
+        HELPER::log_die('Unknown repository tag for ' . Dumper($self->{host}));
     }
     return;
 }
@@ -515,6 +523,7 @@ sub usage
 # add plugins
 #
 sub setup_plugins {
+    __PACKAGE__->add_plugin('RepoLocator::Plugin::Bitbucket');
     __PACKAGE__->add_plugin('RepoLocator::Plugin::Github');
     __PACKAGE__->add_plugin('RepoLocator::Plugin::Gitlab');
     return;
@@ -624,6 +633,13 @@ sub setup_options {
         name => 'create',
         synopsis  => 'Create a new repo if it could not be found',
         usage => '--create',
+        default   => 0,
+        tag       => 'common',
+    );
+    __PACKAGE__->add_option(
+        name => 'create_private',
+        synopsis  => 'If a new repository is created, it should be non-public.',
+        usage => '--create-private=<0|1>',
         default   => 0,
         tag       => 'common',
     );

@@ -173,7 +173,7 @@ our $styles = {
     'optarg'      => 'yellow italic',
     'script-name' => 'blue bold',
     'heading'     => 'underline',
-    'error'     => 'bold red',
+    'error'       => 'bold red',
 };
 
 sub style
