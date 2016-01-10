@@ -111,10 +111,10 @@ VERSION_minor := $(shell semver bump minor --pretend)
 VERSION_major := $(shell semver bump major --pretend)
 bump-%: has-semver
 	sed -i '/^<!-- newest-changes/a ## [$(VERSION_$*)] - $(TODAY)\
-	### Added\
-	### Changed\
-	### Fixed\
-	### Removed\
+	Added\
+	Changed\
+	Fixed\
+	Removed\
 	' CHANGELOG.md
 	sed -i '/^<!-- link-labels/a [$(VERSION_$*)]: ../../compare/v$(VERSION)...v$(VERSION_$*)' CHANGELOG.md
 	$(EDITOR) CHANGELOG.md

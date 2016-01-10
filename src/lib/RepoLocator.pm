@@ -227,7 +227,7 @@ sub _parse_filename
     my $baseURL;
     OUTER:
     while (my $line = shift(@lines)) {
-        if ($line =~ /\[remote .origin.\]/mx) {
+        if ($line =~ /\[remote\s+.origin.\]/mx) {
             while (my $line = shift(@lines)) {
                 if ($line =~ /^\s*url/mx) {
                     ($baseURL) = $line =~ / = (.*)/mx;
