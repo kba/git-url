@@ -1,3 +1,3 @@
 #!/bin/bash
 make all
-perlcritic --verbose 8 --severity 4 bin/git-url
+perlcritic --severity 2 --verbose 7 src/lib

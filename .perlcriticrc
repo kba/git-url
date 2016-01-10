@@ -149,7 +149,7 @@ severity   = 4
 [Perl::Critic::Policy::Modules::RequireFilenameMatchesPackage]
 severity   = 5
 
-[Perl::Critic::Policy::Modules::RequireVersionVar]
+[-Perl::Critic::Policy::Modules::RequireVersionVar]
 severity   = 4
 
 [Perl::Critic::Policy::NamingConventions::ProhibitAmbiguousNames]

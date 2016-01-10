@@ -3,40 +3,59 @@ VERSION = $(shell cat .version)
 
 PREFIX = $(DESTDIR)/usr/local
 BINDIR = $(PREFIX)/bin
+LIBDIR = $(PREFIX)/share/$(SCRIPT_NAME)
 MANDIR = $(PREFIX)/share/man/man1
 CONFDIR = $(HOME)/.config/$(SCRIPT_NAME)
 
 RM = rm -rvf
 CP = cp -rv
-LN = ln -si
+LN = ln -svf
 CP_SECURE = cp -irv
 MKDIR = mkdir -pv
 CHMOD_AX = chmod -c a+x
 PANDOC = pandoc -s -M hyphenate=false -V adjusting=false -t man
 
+LIB_TARGETS = $(shell find src/lib -type f -name "*.pm"|sed 's,src/,,')
+
 .PHONY: clean check \
-	install install-bin install-man install-config uninstall \
-	install-home uninstall-home
+	install uninstall
 
-all: bin/$(SCRIPT_NAME) man/$(SCRIPT_NAME).1
+all: lib bin man
 
-# Script
-LAST_COMMIT = $(shell git log --pretty=format:'%h' -n 1)
-bin/$(SCRIPT_NAME): $(SCRIPT_NAME).pl Makefile
-	@$(MKDIR) bin
+# lib
+lib: ${LIB_TARGETS}
+
+lib/HELPER.pm: src/lib/HELPER.pm
+	@$(MKDIR) $(dir $@)
 	@$(CP) $< $@
 	@sed -i 's/__SCRIPT_NAME__/$(SCRIPT_NAME)/' $@
 	@sed -i 's/__VERSION__/$(VERSION)/' $@
 	@sed -i 's/__BUILD_DATE__/$(shell date)/' $@
 	@sed -i 's/__LAST_COMMIT__/$(LAST_COMMIT)/' $@
+
+lib/%.pm: src/lib/%.pm
+	@$(MKDIR) $(dir $@)
+	@$(CP) $< $@
+
+# bin
+bin: bin/$(SCRIPT_NAME)
+
+LAST_COMMIT = $(shell git log --pretty=format:'%h' -n 1)
+bin/$(SCRIPT_NAME): src/bin/$(SCRIPT_NAME).pl
+	@$(MKDIR) bin
+	@$(CP) $< $@
 	@$(CHMOD_AX) $@
 
-# Man page
-man/%.1: %.1.md bin/$(SCRIPT_NAME) has-pandoc dist/gen-manpage.pl
-	@$(MKDIR) man
-	@cat $< | perl dist/gen-manpage.pl 2>/dev/null| $(PANDOC) -o $@
+# man
+man: man/$(SCRIPT_NAME).1
 
+man/%.1: src/man/%.1.md bin has-pandoc dist/gen-manpage.pl
+	@$(MKDIR) man
+	cat $< | perl dist/gen-manpage.pl | $(PANDOC) -o $@
+
+# clean
 clean:
+	@$(RM) lib
 	@$(RM) bin
 	@$(RM) man
 
@@ -44,18 +63,18 @@ clean:
 has-%:
 	@which $* >/dev/null
 
-check: has-perl has-git
+check: has-perl has-git has-curl
 	@echo "$(PATH)" | grep -q '$(BINDIR)' || { echo "BINDIR $(BINDIR) not in your PATH!" && exit 1; }
 	@echo "$(MANPATH)" | grep -q '$(MANDIR)' || { echo "MANDIR $(MANDIR) not in your MANPATH!" && exit 1; }
 
 #
 # Install
 #
-install: bin/$(SCRIPT_NAME) man/$(SCRIPT_NAME).1
-	@$(MKDIR) $(BINDIR)
-	@$(CP) -t $(BINDIR) bin/$(SCRIPT_NAME)
-	@$(MKDIR) $(MANDIR)
-	@$(CP) -t $(MANDIR) man/$(SCRIPT_NAME).1
+install: lib bin man
+	@$(MKDIR) $(BINDIR) $(LIBDIR) $(MANDIR)
+	@$(CP) -t $(LIBDIR) bin lib man README.md
+	@$(LN) -t $(BINDIR) $(LIBDIR)/bin/$(SCRIPT_NAME)
+	@$(LN) -t $(MANDIR) $(LIBDIR)/man/$(SCRIPT_NAME).1
 
 install-config: config.ini
 	@$(MKDIR) $(CONFDIR)
@@ -63,15 +82,13 @@ install-config: config.ini
 
 install-all: install install-config
 
-link: bin/$(SCRIPT_NAME)
-	$(LN) $(PWD)/bin/$(SCRIPT_NAME) $(BINDIR)/$(SCRIPT_NAME)
-
 #
 # Uninstall
 #
 uninstall:
-	@$(RM) $(MANDIR)/$(SCRIPT_NAME).1
+	@$(RM) $(LIBDIR)
 	@$(RM) $(BINDIR)/$(SCRIPT_NAME)
+	@$(RM) $(MANDIR)/$(SCRIPT_NAME).1
 
 uninstall-config:
 	@echo "Ctrl-C to keep, enter to delete $(CONFDIR)?" && read x && $(RM) $(CONFDIR)
