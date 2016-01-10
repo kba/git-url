@@ -1,142 +1,67 @@
 #!/usr/bin/perl
-use Data::Dumper;
 use strict;
 use warnings;
+use Data::Dumper;
 $Data::Dumper::Terse = 1;
+
+BEGIN {
+    map {delete $ENV{$_}} keys(%ENV);
+    $ENV{HOME} = '$HOME';
+}
+
 use File::Basename qw(dirname);
-use lib dirname($0) . '/../lib';
-
-map {delete $ENV{$_}} keys(%ENV);
-$ENV{HOME} = '$HOME';
-$ENV{GIT_URL_SKIP_MAIN} = 1;
-
+use lib dirname($0) . '/../src/lib';
 use RepoLocator;
 use HELPER;
 
+my @modes = qw(man ini);
+my %tokens = map { $_ => {} } @modes;
+my $mode = $ARGV[0];
+unless ($mode) {
+    printf('Must provide mode, one of [%s]', join ',', @modes);
+    exit 1;
+};
+unless ($tokens{$mode}) {
+    printf("Invalid mode '%s'. Valid modes: [%s]", $mode, join ',', @modes);
+    exit 2;
+}
+my $method = "to_$mode";
 
-sub man_command {
+sub gen_command {
     my $tokens = shift;
+    return unless RepoLocator::Command->can($method);
     $tokens->{__COMMANDS__} //= '';
     my $out = \ $tokens->{__COMMANDS__};
     for (RepoLocator->list_commands()) {
         my $cmd = RepoLocator->get_command($_);
-        $$out .= "\n";
-        $$out .= sprintf '## %s %s',
-            $cmd->{name},
-            join(' ', map {
-                $_->{required} 
-                    ? "&lt;" . $_->{name} . "&gt;"
-                    : "[" . $_->{name} . "]"
-                } @{ $cmd->{args} });
-        $$out .= "\n\n";
-        if ($cmd->{args} && scalar(@{ $cmd->{args} }) > 0) {
-            for my $arg (@{ $cmd->{args} }) {
-                $$out .= sprintf("* *%s* %s %s\n",
-                    $arg->{name},
-                    ($arg->{required} ? '**REQUIRED**' : '*OPTIONAL*'),
-                    $arg->{cli_desc}
-                );
-                if ($arg->{man_desc}) {
-                    $$out .= $arg->{man_desc};
-                }
-            }
-            $$out .= "\n";
-        }
-        if ($cmd->{man_desc}) {
-            $$out .= $cmd->{man_desc};
-        } else {
-            $$out .= $cmd->{cli_desc};
-        }
-        $$out .= "\n";
+        $$out .= $cmd->$method;
     }
 }
 
-sub man_options {
+sub gen_options {
     my $tokens = shift;
+    my $all_token = $tokens->{__OPTIONS__};
+    $tokens->{__OPTIONS__} //= '';
+    my $all_out = \$tokens->{__OPTIONS__};
     for (RepoLocator->list_options()) {
         my $opt = RepoLocator->get_option($_);
         my $token = sprintf("__OPTIONS_%s__", uc $opt->{tag});
-        unless ($tokens->{$token}) {
-            $tokens->{$token} = '';
-        }
+        $tokens->{$token} //= '';
         my $out = \$tokens->{$token};
-        # if (ref $opt->{default}) {
-        #     warn Dumper sprintf("[%s]", join(",", @{$opt->{default}}))
-        # }
-        $$out .= "\n\n";
-        $$out .= sprintf "%s, ENV:*%s*, DEFAULT:%s\n",
-            $opt->{man_usage} || $opt->{cli_usage},
-            $opt->{env} || '--',
-            HELPER::human_readable_default($opt->{default});
-            ;
-        my $desc = $opt->{cli_desc};
-        if ($opt->{man_desc}) {
-            $desc = $opt->{man_desc};
-        }
-        unless ($desc) {
-            warn Dumper $opt;
-        }
-        $desc = ':   ' . $desc;
-        $desc =  join("\n    ", split(/\n/, $desc));
-        $$out .= $desc;
+        my $str = $opt->$method;
+        $$out .= $str;
+        $$all_out .= $str;
     }
     return $tokens;
 }
 
-sub ini_options {
-    my $tokens = shift;
-    for (RepoLocator->list_options()) {
-        my $opt = RepoLocator->get_option($_);
-        my $token = sprintf("__OPTIONS_%s__", uc $opt->{tag});
-        unless ($tokens->{$token}) {
-            $tokens->{$token} = '';
-        }
-        my $out = \$tokens->{$token};
-        # if (ref $opt->{default}) {
-        #     warn Dumper sprintf("[%s]", join(",", @{$opt->{default}}))
-        # }
-        $$out .= "\n\n";
-        # ; base_dir: Base directory where projects are stored
-        # ; ENV: $GITDIR
-        # ; base_dir     = ~/git-projects
-        $$out .= HELPER::unindent(16, sprintf(q(
-            %s, ENV:*%s*, DEFAULT:%s\n",
-            ),
-            $opt->{man_usage} || $opt->{cli_usage},
-            $opt->{env} || '--',
-            HELPER::human_readable_default($opt->{default});
-        ));
-            ;
-        my $desc = $opt->{cli_desc};
-        if ($opt->{man_desc}) {
-            $desc = $opt->{man_desc};
-        }
-        unless ($desc) {
-            warn Dumper $opt;
-        }
-        $desc = ':   ' . $desc;
-        $desc =  join("\n    ", split(/\n/, $desc));
-        $$out .= $desc;
-    }
-    return $tokens;
-}
+gen_command($tokens{$mode});
+gen_options($tokens{$mode});
 
-my %tokens = {
-    man => {},
-    ini => {},
-};
-man_command($tokens{man});
-man_options($tokens{man});
-
-$mode = @ARGV[0];
-
-unless ($tokens{$mode}) {
-    printf "Invalid mode '%s'. Valid modes: [%s]", $mode, keys %tokens;
-    exit 1;
-}
+# warn Dumper \%tokens;
 
 while (<STDIN>) {
-    while (my ($k, $v) = each(%tokens)) {
+    while (my ($k, $v) = each(%{$tokens{$mode}})) {
         s/$k/$v/e;
     }
     print $_;

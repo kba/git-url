@@ -20,7 +20,7 @@ LIB_TARGETS = $(shell find src/lib -type f -name "*.pm"|sed 's,src/,,')
 .PHONY: clean check \
 	install uninstall
 
-all: lib bin man
+all: lib bin man config.ini
 
 # lib
 lib: ${LIB_TARGETS}
@@ -51,13 +51,19 @@ man: man/$(SCRIPT_NAME).1
 
 man/%.1: src/man/%.1.md bin has-pandoc dist/gen-manpage.pl
 	@$(MKDIR) man
-	cat $< | perl dist/gen-manpage.pl | $(PANDOC) -o $@
+	cat $< | perl dist/gen-manpage.pl man | $(PANDOC) -o $@
+
+# config.ini
+
+config.ini: src/config.ini lib bin dist/gen-manpage.pl
+	cat $< | perl dist/gen-manpage.pl ini > $@
 
 # clean
 clean:
 	@$(RM) lib
 	@$(RM) bin
 	@$(RM) man
+	@$(RM) config.ini
 
 # Check for installed programs
 has-%:

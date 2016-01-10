@@ -278,6 +278,7 @@ sub _set_clone_url
     HELPER::log_trace("Setting clone URL");
     HELPER::require_location($self, 'host', 'owner', 'repo_name');
     if ($self->{host} =~ /github|gitlab|bitbucket/mx) {
+        # TODO move this out
         if ($self->{config}->{prefer_ssh}
             && (   $self->{owner} eq $self->{config}->{github_user}
                 || $self->{owner} eq $self->{config}->{gitlab_user}))
