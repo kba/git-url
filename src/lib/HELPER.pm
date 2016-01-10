@@ -173,6 +173,7 @@ our $styles = {
     'optarg'      => 'yellow italic',
     'script-name' => 'blue bold',
     'heading'     => 'underline',
+    'error'     => 'bold red',
 };
 
 sub style
@@ -210,7 +211,7 @@ sub validate_required_args
     my ($cls, $required_attrs, %_self) = @_;
     my @missing;
     for (@{$required_attrs}) {
-        unless (defined $_self{$_}) {
+        unless (exists $_self{$_}) {
             push @missing, $_;
         }
     }
