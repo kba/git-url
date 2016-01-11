@@ -1,7 +1,7 @@
-package RepoLocator::Plugin::Gitlab;
+package CliApp::Plugin::Gitlab;
 use strict;
 use warnings;
-use parent 'RepoLocator::Plugin';
+use parent 'CliApp::Plugin';
 
 my @_hosts = qw(gitlab.com);
 
@@ -14,15 +14,14 @@ sub new {
 
 sub add_options
 {
-    my ($self, $parent) = @_;
-    $parent->add_option(
+    CliApp::Config->add_option(
         name => 'gitlab_api',
         synopsis  => 'Base URL of the Gitlab API to use.',
         usage => '--gitlab_api=<API URL>',
         default   => 'https://gitlab.com/api/v3',
         tag       => 'gitlab',
     );
-    $parent->add_option(
+    CliApp::Config->add_option(
         name => 'gitlab_user',
         usage => '--gitlab-user=<user>',
         synopsis  => 'Your Gitlab user name.',
@@ -30,7 +29,7 @@ sub add_options
         default   => $ENV{GITLAB_USER},
         tag       => 'gitlab',
     );
-    $parent->add_option(
+    CliApp::Config->add_option(
         name => 'gitlab_token',
         usage => '--gitlab-token=<token>',
         synopsis  => 'Your private Gitlab token.',

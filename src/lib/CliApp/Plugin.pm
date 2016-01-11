@@ -1,4 +1,4 @@
-package RepoLocator::Plugin;
+package CliApp::Plugin;
 use strict;
 use warnings;
 use HELPER;

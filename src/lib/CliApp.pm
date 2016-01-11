@@ -1,4 +1,4 @@
-package RepoLocator;
+package CliApp;
 use strict;
 use warnings;
 use HELPER;
@@ -6,38 +6,28 @@ use Data::Dumper;
 use File::Spec;
 use Carp qw(croak carp);
 use Term::ANSIColor;
+
+use CliApp::Config;
+use CliApp::Command;
+use CliApp::Plugin::Bitbucket;
+use CliApp::Plugin::Github;
+use CliApp::Plugin::Gitlab;
+
+use parent 'CliApp::Command';
+
 $Data::Dumper::Terse = 1;
 our $CONFIG_FILE = join('/', $ENV{HOME}, '.config', "__SCRIPT_NAME__", 'config.ini');
 
-use RepoLocator::Command;
-use RepoLocator::Option;
-use RepoLocator::Plugin::Bitbucket;
-use RepoLocator::Plugin::Github;
-use RepoLocator::Plugin::Gitlab;
-
-#=========
-# Options
-#=========
-my %option_doc = ();
-
-sub get_option
-{
-    my ($cls, $option) = @_;
-    return $option_doc{$option};
+BEGIN {
+    no strict 'refs';
+    #=========
+    # Getters
+    #=========
+    for my $k (qw(config host)) {
+        *{__PACKAGE__ . '::' . $k} = sub { return $_[0]->{$k}; };
+    }
 }
 
-sub list_options
-{
-    my @options = sort keys %option_doc;
-    return wantarray ? @options : \@options;
-}
-
-sub add_option
-{
-    my ($cls, %opt_args) = @_;
-    my $opt = RepoLocator::Option->new(%opt_args);
-    return $option_doc{$opt->{name}} = $opt;
-}
 
 #==========
 # Commands
@@ -61,7 +51,7 @@ sub list_commands
 sub add_command
 {
     my ($cls, %cmd_args) = @_;
-    my $cmd = RepoLocator::Command->new(%cmd_args);
+    my $cmd = CliApp::Command->new(%cmd_args);
     return $command_doc{$cmd->{name}} = $cmd;
 }
 
@@ -97,58 +87,20 @@ sub add_plugin
 # Tags
 #======
 
-sub list_tags
+sub all_tags
 {
     my ($cls) = @_;
     my %ret;
-    for ($cls->list_options()) {
-        $ret{ $cls->get_option($_)->{tag} } = 1;
+    for (CliApp::Config->list_options()) {
+        $ret{ CliApp::Config->get_option($_)->{tag} } = 1;
     }
     my @tags = sort keys %ret;
-    return wantarray ? @tags : \@tags;
+    return join(',', 'all', @tags);
 }
 
 #=======================
 # Private API - Instance
 #=======================
-
-sub _load_config
-{
-    my ($self, $cli_config) = @_;
-
-    my $config     = {};
-    for ($self->list_options()) {
-        $config->{$_} = $self->get_option($_)->{default};
-    }
-    if (-r $CONFIG_FILE) {
-        my @lines = @{ HELPER::_slurp($CONFIG_FILE) };
-        for (@lines) {
-            s/^\s+|\s+$//gmx;
-            next if (/^$/mx || /^[#;]/mx);
-            my ($k, $v) = split /\s*=\s*/mx;
-            if ($option_doc{$k}->{csv}) {
-                my @split_values;
-                for (split(/\s*,\s*/mx, $v)) {
-                    s/~/$ENV{HOME}/mx;
-                    s/\/$//mx;
-                    push @split_values, $_;
-                }
-                $v = \@split_values;
-            }
-            $config->{$k} = $v;
-        }
-    }
-    while (my ($k, $v) = each(%{$cli_config})) {
-        $config->{$k} = $v;
-    }
-
-    # set log level
-    $HELPER::LOGLEVEL = $HELPER::log_levels->{ $config->{loglevel} };
-
-    # make sure base_dir exists
-    HELPER::_mkdirp($config->{base_dir});
-    return $config;
-}
 
 sub _get_clone_url_ssh_owner_reponame
 {
@@ -179,7 +131,7 @@ sub _clone_command
     return join(
         ' ',
         'git clone',
-        $self->{config}->{clone_opts},
+        $self->config->{clone_opts},
         $self->{clone_url});
 }
 
@@ -188,11 +140,11 @@ sub _edit_command
     my ($self) = @_;
     my $cmd = join(
         ' ',
-        $self->{config}->{editor},
+        $self->config->{editor},
         $self->{path_within_repo});
     if ($self->{line}) {
         my ($line) = $self->{line} =~ /(\d+)/mx;
-        if ($self->{config}->{editor} =~ /vi/mx) {
+        if ($self->config->{editor} =~ /vi/mx) {
             $cmd .= " +$line";
         }
     }
@@ -211,8 +163,8 @@ sub _parse_filename
     ($path, $self->{line}, $self->{column}) = split(':', $path);
     if (!-e $path) {
         HELPER::log_info("No such file/directory: $path");
-        HELPER::log_info(sprintf("Interpreting '%s' as '%s' shortcut", $path, $self->{config}->{clone}));
-        return $self->_parse_url($self->get_plugin($self->{config}->{clone})->to_url($self, $path));
+        HELPER::log_info(sprintf("Interpreting '%s' as '%s' shortcut", $path, $self->config->{clone}));
+        return $self->_parse_url($self->get_plugin($self->config->{clone})->to_url($self, $path));
     }
     $path = File::Spec->rel2abs($path);
     my $dir = HELPER::_git_dir_for_filename($path);
@@ -279,9 +231,9 @@ sub _set_clone_url
     HELPER::require_location($self, 'host', 'owner', 'repo_name');
     if ($self->{host} =~ /github|gitlab|bitbucket/mx) {
         # TODO move this out
-        if ($self->{config}->{prefer_ssh}
-            && (   $self->{owner} eq $self->{config}->{github_user}
-                || $self->{owner} eq $self->{config}->{gitlab_user}))
+        if ($self->config->{prefer_ssh}
+            && (   $self->{owner} eq $self->config->{github_user}
+                || $self->{owner} eq $self->config->{gitlab_user}))
         {
             $self->{clone_url} = $self->_get_clone_url_ssh_owner_reponame();
         }
@@ -322,11 +274,11 @@ sub _find_in_repo_dirs
 {
     my $self = shift;
     HELPER::log_trace("Looking for %s in repo_dirs", $self->{repo_name});
-    for my $dir (@{ $self->{config}->{repo_dirs} }, $self->{config}->{base_dir}) {
+    for my $dir (@{ $self->config->{repo_dirs} }, $self->config->{base_dir}) {
         HELPER::log_trace("Checking repo_dir $dir");
         if (!-d $dir) {
             HELPER::log_error("Not a directory (in repo_dirs): $dir");
-            carp Dumper $self->{config}->{repo_dirs};
+            carp Dumper $self->config->{repo_dirs};
         }
         my @candidates = (
             $self->{repo_name},
@@ -349,8 +301,8 @@ sub _create_repo
 {
     my ($self) = @_;
     HELPER::require_location($self, 'host', 'owner', 'repo_name');
-    if ($self->get_plugin($self->{config}->{create})) {
-        $self->get_plugin($self->{config}->{create})->create_repo($self);
+    if ($self->get_plugin($self->config->{create})) {
+        $self->get_plugin($self->config->{create})->create_repo($self);
     }
     else {
         HELPER::log_die(
@@ -379,17 +331,17 @@ sub _clone_repo
 {
     my ($self) = @_;
     HELPER::require_location($self, 'host', 'owner', 'repo_name');
-    if ($self->{path_to_repo} && !$self->{config}->{no_local}) {
+    if ($self->{path_to_repo} && !$self->config->{no_local}) {
         HELPER::log_info(
             sprintf(
                 "We already have a path to this one (%s), not cloning to base_dir",
                 $self->{path_to_repo}));
         return;
     }
-    if ($self->{config}->{fork}) {
+    if ($self->config->{fork}) {
         $self->_fork_repo();
     }
-    my $ownerDir = join('/', $self->{config}->{base_dir}, $self->{host}, $self->{owner});
+    my $ownerDir = join('/', $self->config->{base_dir}, $self->{host}, $self->{owner});
     HELPER::_mkdirp($ownerDir);
     HELPER::_chdir($ownerDir);
     my $repoDir = join('/', $ownerDir, $self->{repo_name});
@@ -397,7 +349,7 @@ sub _clone_repo
     if (!-d $repoDir) {
         my $output = HELPER::_system($cloneCmd . ' 2>&1');
         if ($? > 0) {
-            if ($self->{config}->{create}) {
+            if ($self->config->{create}) {
                 $self->_create_repo();
                 $self->_clone_repo();
             }
@@ -419,7 +371,7 @@ sub _reset_urls
     my $self = shift;
     $self->_set_browse_url();
     $self->_set_clone_url();
-    unless ($self->{config}->{no_local}) {
+    unless ($self->config->{no_local}) {
         $self->_find_in_repo_dirs();
     }
     return;
@@ -433,28 +385,46 @@ sub _reset_urls
 
 sub new
 {
-    my ($class, $_args, $cli_config) =  @_;
+    my ($class, %_self) =  @_;
 
-    my $self = bless {}, $class;
+    my $self = $class->SUPER::new(
+        name => $HELPER::SCRIPT_NAME,
+        synopsis => 'do git stuff',
+        tag => '__root__',
+        do => sub {
+            my ($me) = @_;
+            $me->get_command($me->{subcommand})->do($me);
+        }
+    );
+    $self->{subcommand} = $_self{subcommand};
+    $self->{args}   = $_self{args};
 
-    $self->{args}   = $_args;
-    $self->{config} = $self->_load_config($cli_config);
+    # load config
+    my @config_files = ($CONFIG_FILE);
+    $self->{config} = CliApp::Config->new(
+        files => \@config_files,
+        merge => $_self{opts},
+    );
+    # set log level
+    $HELPER::LOGLEVEL = $HELPER::log_levels->{ $self->config->loglevel };
+    # set log level
+    $HELPER::styles = $self->config->color_theme;
+    # make sure base_dir exists
+    HELPER::_mkdirp($self->config->{base_dir});
+
     for my $key ('create', 'clone', 'fork') {
-        if ($key eq 'create' && $self->{config}->{$key} && $self->{config}->{$key} == 1) {
-            $self->{config}->{$key} = $self->{config}->{clone};
+        if ($key eq 'create' && $self->config->{$key} && $self->config->{$key} == 1) {
+            $self->config->{$key} = $self->config->{clone};
         }
         if (   $key eq 'fork'
-            && $self->{config}->{$key}
-            && $self->{config}->{fork} ne $self->{config}->{clone})
+            && $self->config->{$key}
+            && $self->config->{fork} ne $self->config->{clone})
         {
             HELPER::log_die(
                 "Can only fork within a service. Conflicting clone<->fork: ",
-                join(
-                    '<->',
-                    $self->{config}->{clone},
-                    $self->{config}->{fork}));
+                join('<->', $self->config->clone, $self->config->fork));
         }
-        my $val = $self->{config}->{$key};
+        my $val = $self->config->{$key};
         if ($val && !$self->get_plugin($val)) {
             HELPER::log_die(
                 sprintf(
@@ -479,36 +449,50 @@ sub new
     if ($HELPER::LOGLEVEL > 1) {
         HELPER::log_trace("Parsed as: " . Dumper $self);
     }
-
     return $self;
 }
 
-sub usage
+sub print_usage
 {
-    my ($cls, %args) = @_;
-    $args{tags} ||= [ $cls->list_tags ];
-    if ($args{error}) {
-        print HELPER::style('error', "\nError: %s\n\n", $args{error});
+    my ($self, %args) = @_;
+    $args{tags} ||= 'common';
+    if ($args{tags} =~ /\b(all|\*)\b/mx ) {
+        $args{tags} = $self->all_tags;
     }
-    print HELPER::style( 'heading',     "Usage:\n\t" );
     print HELPER::style( 'script-name', $HELPER::SCRIPT_NAME );
-    print HELPER::style( 'option',      " [options]" );
-    print HELPER::style( 'command',     " <command>" );
-    print HELPER::style( 'arg',         " <args>\n" );
-    print HELPER::style( 'heading', "Options:" );
-    print HELPER::style( 'default', " [%s]\n", join( ',', @{ $args{tags} } ) );
-    for my $opt_name ($cls->list_options()) {
-        my $opt = $cls->get_option($opt_name);
-        unless (grep { $_ eq $opt->{tag} } @{ $args{tags} }) {
-            next;
-        }
+    print " ";
+    for my $opt_name ($self->config->list_options) {
+        my $opt = $self->config->get_option($opt_name);
+        next if (index($args{tags}, $opt->{tag}) == -1);
+        print HELPER::style( 'option', $opt->{usage} );
+        print " ";
+    }
+    print HELPER::style( 'command', "<%s>", join('|', $self->list_commands) );
+    print HELPER::style( 'arg',     " [args]\n" );
+}
+
+sub print_help
+{
+    my ($self, %args) = @_;
+    $args{tags} ||= 'common';
+    if ($args{tags} =~ /\b(all|\*)\b/mx ) {
+        $args{tags} = $self->all_tags;
+    }
+    print HELPER::style( 'error', "\nError: %s\n\n", $args{error} ) if ( $args{error} );
+    print HELPER::style( 'heading',     "Usage:\n\t" );
+    $self->print_usage(%args);
+    print HELPER::style( 'heading',     "Options:" );
+    print HELPER::style( 'default', " [%s]\n", $args{tags} );
+    for my $opt_name (CliApp::Config->list_options()) {
+        my $opt = CliApp::Config->get_option($opt_name);
+        next if (index($args{tags}, $opt->{tag}) == -1);
         print "\t";
         $opt->print_usage();
     }
 
     print HELPER::style('heading', "Subcommands:\n");
-    for my $cmd_name ($cls->list_commands()) {
-        my $cmd = $cls->get_command($cmd_name);
+    for my $cmd_name ($self->list_commands()) {
+        my $cmd = $self->get_command($cmd_name);
         $cmd_name =~ s/_/-/gmx;
         print "\t";
         $cmd->print_usage(brief => 1);
@@ -524,134 +508,9 @@ sub usage
 # add plugins
 #
 sub setup_plugins {
-    __PACKAGE__->add_plugin('RepoLocator::Plugin::Bitbucket');
-    __PACKAGE__->add_plugin('RepoLocator::Plugin::Github');
-    __PACKAGE__->add_plugin('RepoLocator::Plugin::Gitlab');
-    return;
-}
-
-#
-# add options
-#
-sub setup_options {
-    __PACKAGE__->add_option(
-        name => 'base_dir',
-        env       => 'GITDIR',
-        synopsis  => 'The base directory to clone repos to and look for them.',
-        usage     => '--base-dir=<path>',
-        default   => $ENV{GITDIR} || $ENV{HOME} . '/build',
-        tag       => 'prefs',
-    );
-    __PACKAGE__->add_option(
-        name => 'repo_dirs',
-        csv     => 1,
-        usage => '--repo-dirs=<comma separated dirs>',
-        synopsis  => 'The directories to search for repositories.',
-        default   => $ENV{GITDIR_PATH} || [],
-        env       => 'GITDIR_PATH',
-        tag       => 'prefs',
-    );
-    __PACKAGE__->add_option(
-        name => 'editor',
-        synopsis  => 'The editor to open files with.',
-        usage => '--editor=<path to editor>',
-        default   => $ENV{EDITOR} || 'vim',
-        env       => 'EDITOR',
-        man_usage => '--editor=*BINARY*',
-        tag       => 'prefs',
-    );
-    __PACKAGE__->add_option(
-        name => 'browser',
-        env       => 'BROWSER',
-        synopsis  => 'The web browser to open URL with.',
-        man_usage => '--browser=*BINARY*',
-        usage => '--browser=<binary>',
-        default   => $ENV{BROWSER} || 'chromium',
-        tag       => 'prefs',
-    );
-    __PACKAGE__->add_option(
-        name => 'shell',
-        env       => 'SHELL',
-        usage => '--shell=<path to shell>',
-        man_usage => '--shell=*SHELL*',
-        synopsis  => 'The shell to use',
-        tag       => 'prefs',
-        default   => $ENV{SHELL} || 'bash',
-    );
-    __PACKAGE__->add_option(
-        name => 'loglevel',
-        env       => 'LOGLEVEL',
-        usage => '--debug[=trace|debug|info|error]',
-        synopsis  => 'Log level',
-        man_usage => '--debug[=*LEVEL*]',
-        long_desc  => HELPER::unindent(
-            12, q(
-            Specify logging level. Can be one of `trace`, `debug`, `info`
-                or `error`. If no level is specified, defaults to `debug`. If
-            the option is omitted, only errors will be logged.
-            )
-        ),
-        tag     => 'common',
-        default => $ENV{LOGLEVEL} || 'error',
-    );
-    __PACKAGE__->add_option(
-        name => 'clone_opts',
-        synopsis  => 'Additional arguments to pass to "git clone"',
-        usage => '--clone-opts=<arg1 arg2...>',
-        default   => '--depth 1',
-        long_desc  => 'Additional command line arguments to pass to *git-clone(1)*',
-        tag       => 'prefs',
-    );
-    __PACKAGE__->add_option(
-        name => 'prefer_ssh',
-        synopsis  => 'Whether to prefer "git@" over "https:" URL',
-        usage => '--prefer-ssh',
-        default   => 1,
-        long_desc  => HELPER::unindent(
-            12, q(
-            Whether to prefer SSH URL over HTTP URL if the remote repository is owned
-            by the user. If set to a true value, use *git@host:owner/repo_name* URL over
-            *https://host/owner/repo_usage* URL.
-            )
-        ),
-        tag => 'prefs',
-    );
-    __PACKAGE__->add_option(
-        name => 'fork',
-        synopsis  => 'Whether to fork the repository before cloning.',
-        usage => '--fork',
-        default   => 0,
-        tag       => 'common',
-    );
-    __PACKAGE__->add_option(
-        name => 'clone',
-        synopsis  => 'Clone repo from this service.',
-        usage => '--clone',
-        default   => 'github.com',
-        tag       => 'common',
-    );
-    __PACKAGE__->add_option(
-        name => 'create',
-        synopsis  => 'Create a new repo if it could not be found',
-        usage => '--create',
-        default   => 0,
-        tag       => 'common',
-    );
-    __PACKAGE__->add_option(
-        name => 'create_private',
-        synopsis  => 'If a new repository is created, it should be non-public.',
-        usage => '--create-private=<0|1>',
-        default   => 0,
-        tag       => 'common',
-    );
-    __PACKAGE__->add_option(
-        name => 'no_local',
-        synopsis  => "Don't look for the repo in the directories",
-        usage => '--no-local',
-        default   => 0,
-        tag       => 'common',
-    );
-
+    __PACKAGE__->add_plugin('CliApp::Plugin::Bitbucket');
+    __PACKAGE__->add_plugin('CliApp::Plugin::Github');
+    __PACKAGE__->add_plugin('CliApp::Plugin::Gitlab');
     return;
 }
 
@@ -709,7 +568,7 @@ sub setup_commands {
             $self->_clone_repo();
             HELPER::require_location($self, 'path_to_repo');
             HELPER::_chdir $self->{path_to_repo};
-            HELPER::_system $self->{config}->{shell};
+            HELPER::_system $self->config->{shell};
         }
     );
     __PACKAGE__->add_command(
@@ -762,26 +621,33 @@ sub setup_commands {
         do       => sub {
             my ($self) = @_;
             HELPER::require_location($self, 'browse_url');
-            HELPER::_system(join(' ', $self->{config}->{browser}, $self->{browse_url}));
+            HELPER::_system(join(' ', $self->config->{browser}, $self->{browse_url}));
         }
     );
     __PACKAGE__->add_command(
         name     => 'help',
-        synopsis => 'Open help for subcommand or man page',
+        synopsis => 'Open help for command, option, plugin or option group',
         tag      => 'common',
-        args     => [ { name => 'command or option', synopsis => 'Command to look up', required => 0 } ],
+        args => [
+            {
+                name =>
+                  sprintf( 'cmd, opt, plugin or optgroup' ),
+                synopsis => 'Command to look up',
+                required => 0
+            }
+        ],
         do       => sub {
             my ($self) = @_;
             $_ = $self->{args}->[0];
             if ($_ && /^-/mx) {
                 s/^-*//mx;
                 s/-/_/gmx;
-                my $opt = __PACKAGE__->get_option($_);
+                my $opt = CliApp::Config->get_option($_);
                 if ($opt) {
                     $opt->print_help()
                 }
                 else {
-                    $self->usage(error => "No such option: " . $self->{args}->[0]);
+                    $self->print_help(error => "No such option: " . $self->{args}->[0]);
                 }
             }
             elsif ($_) {
@@ -791,11 +657,11 @@ sub setup_commands {
                     $cmd->print_help()
                 }
                 else {
-                    $self->usage(error => "No such command " . $self->{args}->[0]);
+                    $self->print_help(tags => $self->{args}->[0]);
                 }
             }
             else {
-                HELPER::_system("man $HELPER::SCRIPT_NAME");
+                $self->print_help();
             }
         }
     );
@@ -813,29 +679,28 @@ sub setup_commands {
             printf 'https://github.com/kba/%s/commit/%s\n', $HELPER::SCRIPT_NAME, $HELPER::LAST_COMMIT;
         }
     );
+
     __PACKAGE__->add_command(
         name     => 'usage',
         synopsis => 'Show usage',
         tag      => 'common',
         args     => [
-            {   name     => join('|', 'all', __PACKAGE__->list_tags()), synopsis => 'Tags to display',
+            {
+                name     => __PACKAGE__->all_tags(),
+                synopsis => 'Tags to display',
                 required => 0
             }
         ],
         do => sub {
             my ($self) = @_;
-            my @tags = split(',', $self->{args}->[0] // 'common');
-            if (grep { $_ eq 'all' || $_ eq '*' } @tags) {
-                @tags = $self->list_tags;
-            }
-            __PACKAGE__->usage(tags => \@tags);
+            my @tags = split( ',', $self->{args}->[0] // 'common' );
+            $self->print_usage( tags => \@tags );
         }
     );
     return;
 }
 
 setup_plugins();
-setup_options();
 setup_commands();
 
 1;
