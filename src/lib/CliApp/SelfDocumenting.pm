@@ -18,6 +18,11 @@ sub print_help
     print HELPER::style('heading', "\nUsage:\n\t");
     print HELPER::style('script-name', "%s ", $HELPER::SCRIPT_NAME);
     $self->print_usage();
+    if ($self->{args}) {
+        for (@{$self->{args}}) {
+            printf "%s\n", Dumper $_;
+        }
+    }
     if ($self->{long_desc}) {
         my $long_desc = $self->{long_desc};
         $long_desc =~ s/^/\t/mgx;

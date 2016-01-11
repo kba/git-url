@@ -11,7 +11,7 @@ BEGIN {
 
 use File::Basename qw(dirname);
 use lib dirname($0) . '/../src/lib';
-use RepoLocator;
+use CliApp;
 use HELPER;
 
 my @modes = qw(man ini);
@@ -29,11 +29,11 @@ my $method = "to_$mode";
 
 sub gen_command {
     my $tokens = shift;
-    return unless RepoLocator::Command->can($method);
+    return unless CliApp::Command->can($method);
     $tokens->{__COMMANDS__} //= '';
     my $out = \ $tokens->{__COMMANDS__};
-    for (RepoLocator->list_commands()) {
-        my $cmd = RepoLocator->get_command($_);
+    for (CliApp->list_commands()) {
+        my $cmd = CliApp->get_command($_);
         $$out .= $cmd->$method;
     }
 }
@@ -43,8 +43,8 @@ sub gen_options {
     my $all_token = $tokens->{__OPTIONS__};
     $tokens->{__OPTIONS__} //= '';
     my $all_out = \$tokens->{__OPTIONS__};
-    for (RepoLocator->list_options()) {
-        my $opt = RepoLocator->get_option($_);
+    for (CliApp::Config->list_options()) {
+        my $opt = CliApp::Config->get_option($_);
         my $token = sprintf("__OPTIONS_%s__", uc $opt->{tag});
         $tokens->{$token} //= '';
         my $out = \$tokens->{$token};

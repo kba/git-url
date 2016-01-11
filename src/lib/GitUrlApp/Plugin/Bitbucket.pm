@@ -1,7 +1,7 @@
-package CliApp::Plugin::Bitbucket;
+package GitUrlApp::Plugin::Bitbucket;
 use strict;
 use warnings;
-use parent 'CliApp::Plugin';
+use parent 'GitUrlApp::Plugin';
 
 my @_hosts = qw(bitbucket.org);
 
@@ -12,7 +12,7 @@ sub new {
     return $cls->SUPER::new(%_self);
 }
 
-sub add_options
+sub setup_options
 {
     CliApp::Config->add_option(
         name => 'bitbucket_api',
