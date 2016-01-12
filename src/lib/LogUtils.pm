@@ -1,7 +1,5 @@
 package LogUtils;
 use Term::ANSIColor;
-use Data::Dumper;
-$Data::Dumper::Terse = 1;
 
 sub __caller_source {
     my @cpy = @_;
@@ -37,16 +35,17 @@ sub _log
     my @msgs = @{$_msgs};
     shift @msgs;
     if ($LOGLEVEL >= $minLevel) {
-        printf("[%s] %s\n", colored($levelName, $color), sprintf(shift(@msgs), @msgs));
+        my $fmt = shift @msgs;
+        my @sprintf_values = map { StringUtils->dump($_) } @msgs;
+        printf("[%s] %s\n", colored($levelName, $color), sprintf($fmt, @sprintf_values));
     }
     return;
 }
-sub log_trace { return _log(\@_, "TRACE", 3, 'bold yellow'); }
-sub log_debug { return _log(\@_, "DEBUG", 2, 'bold blue'); }
-sub log_info  { return _log(\@_, "INFO",  1, 'bold green'); }
-sub log_error { return _log(__caller_source(@_), "ERROR", 0, 'bold red' ); }
-sub log_die { log_error(@{__caller_source(@_)}); return exit 70; }
-sub dump { shift; return Dumper(@_); }
+sub trace { return _log(\@_, "TRACE", 3, 'bold yellow'); }
+sub debug { return _log(\@_, "DEBUG", 2, 'bold blue'); }
+sub info  { return _log(\@_, "INFO",  1, 'bold green'); }
+sub error { return _log(__caller_source(@_), "ERROR", 0, 'bold red' ); }
+sub log_die { error(@{__caller_source(@_)}); return exit 70; }
 
 
 #---------
@@ -57,36 +56,36 @@ sub dump { shift; return Dumper(@_); }
 
 sub log_chdir
 {
-    my ($cls, $dir) = @_;
-    LogUtils->log_debug("cd $dir");
+    my ($class, $dir) = @_;
+    LogUtils->debug("cd $dir");
     return chdir $dir;
 }
 
 sub log_system
 {
-    my ($cls, $cmd) = @_;
-    LogUtils->log_debug("$cmd");
+    my ($class, $cmd) = @_;
+    LogUtils->debug("$cmd");
     return system($cmd);
 }
 
 sub log_qx
 {
-    my ($cls, $cmd) = @_;
-    LogUtils->log_debug("$cmd");
+    my ($class, $cmd) = @_;
+    LogUtils->debug("$cmd");
     return qx($cmd);
 }
 
 sub log_mkdirp
 {
-    my ($cls, $dir) = @_;
-    LogUtils->log_trace("mkdir -p $dir");
+    my ($class, $dir) = @_;
+    LogUtils->trace("mkdir -p $dir");
     return make_path($dir);
 }
 
 sub log_slurp
 {
-    my ($cls, $filename) = @_;
-    LogUtils->log_trace("cat $filename");
+    my ($class, $filename) = @_;
+    LogUtils->trace("cat $filename");
     if (!-r $filename) {
         LogUtils->log_die("File '$filename' doesn't exist or isn't readable.");
     }
@@ -98,7 +97,7 @@ sub log_slurp
 
 sub log_git_dir_for_filename
 {
-    my ($cls, $path) = @_;
+    my ($class, $path) = @_;
     if (!-d $path) {
         LogUtils->log_chdir(dirname($path));
     }
@@ -108,7 +107,7 @@ sub log_git_dir_for_filename
     my $dir = _qx('git rev-parse --show-toplevel 2>&1');
     chomp($dir);
     if ($? > 0) {
-        LogUtils->log_error($dir);
+        LogUtils->error($dir);
     }
     return $dir;
 }

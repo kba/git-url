@@ -1,12 +1,12 @@
 package CliApp::Argument;
+use strict;
+use warnings;
 use parent 'CliApp::SelfDocumenting';
 
 sub new {
-    my ($cls, %_self) = @_;
+    my ($cls, %self) = @_;
 
-    $self{required} //= 0;
-
-    return bless $cls->SUPER::new(@_), $cls;
+    return $cls->SUPER::new($cls, [qw(required default)], %self);
 }
 
 1;

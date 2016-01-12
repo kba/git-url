@@ -4,7 +4,6 @@ use warnings;
 use Carp qw(croak carp);
 use Cwd qw(realpath);
 use File::Basename qw(dirname);
-
 use lib realpath(dirname(realpath $0) . '/../lib');
 use GitUrlApp;
 

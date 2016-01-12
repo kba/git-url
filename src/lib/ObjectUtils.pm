@@ -26,7 +26,7 @@ sub validate_required_methods
 
 sub validate_required_args
 {
-    my ($cls, $required_attrs, %_self) = @_;
+    my ($cls, $class, $required_attrs, %_self) = @_;
     my @missing;
     for (@{$required_attrs}) {
         unless (exists $_self{$_}) {
@@ -37,7 +37,7 @@ sub validate_required_args
         LogUtils->log_die(
             sprintf(
                 "Missing args [%s] for '%s' constructor: %s",
-                join(',', @missing), $cls, Dumper(\%_self)));
+                join(',', @missing), $class, Dumper(\%_self)));
     }
     return;
 }

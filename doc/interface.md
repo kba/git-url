@@ -2,6 +2,18 @@
 StringUtils
     style( style_name, @sprintf_args );
 
+LogUtils
+    VARS
+        LOGLEVEL
+        LOGLEVELS
+    METHODS
+        dump( $thing )
+        log_trace(@sprintf_args)
+        log_debug(@sprintf_args)
+        log_info(@sprintf_args)
+        log_error(@sprintf_args)
+        log_die(@sprintf_args)
+
 ObjectUtils
     validate_required_args
     validate_known_args
@@ -31,8 +43,6 @@ Argument extends SelfDocumenting
     required=false
 
 Config
-    Map<String,Option> options;
-
     Option get( );
     Map<String,Any> load(
         Map<String, Any> orig,
@@ -42,6 +52,7 @@ Config
     )
 
 Command extends SelfDocumenting
+    Map<String,Option> options;
     Argument[] args = [];
     Map<String,Command> commands = [];
     Config config;

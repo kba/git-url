@@ -1,21 +1,22 @@
 package CliApp::Option;
+use strict;
+use warnings;
+
 use parent 'CliApp::SelfDocumenting';
 
 sub new {
-    my ($cls, %_self) = @_;
+    my ($cls, %self) = @_;
 
     $self{ref} //= undef;
     $self{env} //= undef;
 
-    return bless $cls->SUPER::new(%_self), $cls;
-}
+    if ( $self{ref} && $self{ref} ne 'ARRAY' && $self{ref} ne 'HASH' ) {
+        LogUtils->log_die(
+            "'ref' must be HASH or ARRAY or undef, not '%s'. In %s",
+            $self{ref}, LogUtils->dump( \%self ) );
+    }
 
-my $opt = CliApp::Option->new(
-    name => 'foo',
-    synopsis => 'set foo opt',
-    tag => 'common',
-    default => 0,
-);
-LogUtils->log_debug($opt->doc_usage);
+    return $cls->SUPER::new($cls, [qw(ref env default)], %self);
+}
 
 1;
