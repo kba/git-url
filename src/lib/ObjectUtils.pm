@@ -11,15 +11,15 @@ $Data::Dumper::Terse = 1;
 
 sub validate_required_methods
 {
-    my ($cls, @required_methods) = @_;
+    my ($cls, $class, @required_methods) = @_;
     my @missing_methods;
     for (@required_methods) {
-        unless ($cls->can($_)) {
+        unless ($class->can($_)) {
             push @missing_methods, $_;
         }
     }
     if ($missing_methods[0]) {
-        LogUtils->log_die(sprintf("Class '%s' is missing methods [%s]", $cls, join(',', @missing_methods)));
+        LogUtils->log_die(sprintf("Class '%s' is missing methods [%s]", $class, join(',', @missing_methods)));
     }
     return;
 }

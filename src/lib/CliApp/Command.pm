@@ -3,61 +3,70 @@ use strict;
 use warnings;
 use parent 'CliApp::SelfDocumenting';
 
-use CliApp::Plugin::Core;
-
 my $log = 'LogUtils';
 
-my @_components = qw(command option argument plugin);
-my @_components_plural = map {$_."s"} @_components;
 
-sub new {
-    my ($class, %_self) = @_;
-
-    for (@_components_plural) {
-        $_self{$_} = [] unless exists $_self{$_};
-        LogUtils->log_die( "'%s' must be 'ARRAY' not '%s' %s", $_, ref $_self{$_} ) unless ref $_self{$_} && ref $_self{$_} eq 'ARRAY';
-    };
-
-
-    # XXX INSTANTIATE XXX
-    my $self = $class->SUPER::new($class, [@_components_plural], %_self);
-
-    if (scalar(@{$self->commands}) && scalar(@{$self->arguments})) {
-        LogUtils->log_die("Cannot set both options and arguments for '%s'", $self->name);
-    }
-
-    for (@_components) {
-        my $comp_class = sprintf "CliApp::%s", ucfirst $_;
-        my $comp_count = sprintf "count_%ss", $_;
-        my $comp_acc = sprintf "%ss", $_;
-        $log->trace("%s: %s=%s", $self->name, $comp_count, $self->$comp_count);
-        my $temp = $_ eq 'argument' ? [] : {};
-        if ( $self->$comp_count ) {
-            for (@{ $self->$comp_acc }) {
-                if (ref $temp eq 'ARRAY') {
-                    push @{$temp}, $comp_class->new( %{$_}, parent => $self );
-                } else {
-                    if ($comp_acc eq 'plugins') {
-                        my $comp = ref $_ ? $_ : $_->new();
-                        $temp->{ref($comp)} = $comp;
-                    } else {
-                        my $comp = $comp_class->new( %{$_}, parent => $self );
-                        $temp->{$comp->name} = $comp;
-                    }
-                }
+BEGIN {
+    use List::Util qw(first);
+    no strict 'refs';
+    our @_components = qw(command option argument);
+    for my $var (@_components) {
+        *{ sprintf "%s::count_%ss", __PACKAGE__, $var } = sub {
+            return scalar @{ $_[0]->{$var} };
+        };
+        *{ sprintf "%s::get_%s", __PACKAGE__, $var } = sub {
+            my $self = shift;
+            my $plural = $var .'s';
+            if (scalar @_ == 0) {
+                warn "Nothing passed too get_" . $var;
+            } elsif (scalar @_ == 1) {
+                return first { $_->name eq $_[0] } @{ $self->{$plural} };
             }
-            $self->{$comp_acc} = $temp;
-        }
+
+        };
+        *{ sprintf "%s::add_%s", __PACKAGE__, $var } = sub {
+            my $self = shift;
+            my $plural = $var .'s';
+            my $class = sprintf "CliApp::%s", ucfirst $var;
+            if ( ref $_[0] && ref $_[0] eq $class ) {
+                push @{ $self->{$plural} }, $_[0];
+            } else {
+                push @{ $self->{$plural} }, $class->new(@_, parent => $self);
+            }
+        };
     }
-    return $self;
 }
 
-sub _make_command {
-    my ($self, $sub_self) = @_;
+sub new {
+    my ($class, %args) = @_;
 
-    $sub_self->{parent} = $self;
+    for (@CliApp::Command::_components) {
+        my $plural = $_ . 's';
+        $args{$plural} = [] unless exists $args{$plural};
+        unless ( ref $args{$plural} && ref $args{$plural} eq 'ARRAY' ) {
+            LogUtils->log_die( "'%s' must be 'ARRAY' not '%s' %s",
+                $plural, ref $args{$plural} );
+        }
+    }
+    if (! $class->can('do') && !( $args{do} && ref $args{do} && ref $args{do} eq 'CODE')) {
+        LogUtils->log_die("Must either implement a 'do' method or pass a 'do' CODEREF for command %s", \%args);
+    }
+    if (scalar(@{$args{commands}}) && scalar @{$args{arguments}}) {
+        LogUtils->log_die("Cannot set both options and arguments for '%s'", $args{name});
+    }
+    my $self = $class->SUPER::new($class, [], %args);
 
-    return CliApp::Command->new(%{$sub_self});
+    for my $comp_type (@CliApp::Command::_components) {
+        my $plural = $comp_type . 's';
+        my $add_method = sprintf "%s::add_%s", __PACKAGE__, $comp_type;
+        my $before = delete $self->{$plural};
+        $self->{$plural} = [];
+        for my $def (@{$before}) {
+            $self->$add_method(%{$def});
+        }
+    }
+
+    return $self;
 }
 
 1;
