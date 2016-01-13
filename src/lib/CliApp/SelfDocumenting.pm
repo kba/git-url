@@ -16,6 +16,7 @@ sub new {
 
     for my $var (keys %_self) {
         no strict 'refs';
+        next if $var eq 'validate';
         *{ sprintf "%s::%s", $subclass, $var } = sub {
             # LogUtils->trace("%s->{%s} = %s", $_[0], $var, $_[0]->{$var});
             return $_[0]->{$var};
@@ -30,6 +31,31 @@ sub new {
 sub app {
     my ($self) = @_;
     return $self->parent ? $self->parent->app : $self;
+}
+
+sub full_name {
+    my ($self) = @_;
+    return '' unless $self->parent;
+    @parents = ($self->name);
+    while ($self = $self->parent) {
+        last unless $self->parent;
+        unshift @parents, $self->name;
+    }
+    return join('.', @parents);
+}
+
+sub validate {
+    my ($self, @args) = @_;
+    if ($self->{validate}) {
+        return $self->{validate}->( $self, @args );
+    } elsif ($self->{enum}) {
+        for $val (@args) {
+            grep { $val eq $_ } @{ $self->{enum} } or return [
+                "Invalid value '%s' for option '%s'. Allowed: %s", $val, $self->name, $self->enum
+            ];
+        }
+    }
+    return;
 }
 
 sub doc_usage {

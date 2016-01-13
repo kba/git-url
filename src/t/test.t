@@ -1,6 +1,8 @@
 use Cwd qw(realpath);
 use File::Basename qw(dirname);
-use lib realpath(dirname(realpath $0) . '/../lib');
+my $SCRIPT_DIR;
+BEGIN { $SCRIPT_DIR = realpath(dirname(realpath $0)) };
+use lib $SCRIPT_DIR . '/../lib';
 
 use Test::More;
 
@@ -102,7 +104,7 @@ sub test_app {
 
 sub test_config {
     my $cmd = CliApp::App->new(
-        name => 'foo',
+        name => 'git-url',
         synopsis => 'a foo cmd',
         tag => 'common',
         arguments => [
@@ -117,16 +119,41 @@ sub test_config {
             CliApp::Plugin::cliapp
         )],
     );
-    my $config = CliApp::Config->new(app => $cmd, argv => ['--log-level=foo']);
-    isa_ok $config, 'CliApp::Config';
-    $log->info("%s", $config);
+    # $log->warn($cmd->get_command('help')->get_option('all')->full_name);
+    $log->error("LEVEL now: '%s'", $LogUtils::LOGLEVEL);
+    $log->info("Default config: %s", $cmd->default_config);
+    $cmd->configure([qw(--loglevel=trace)],  $SCRIPT_DIR . "/assets/config.ini");
+    $log->info("Parsed config: %s", $cmd->config);
+    $log->error("LEVEL now: '%s'", $LogUtils::LOGLEVEL);
+
+    $ENV{LOGLEVEL} = 'info';
+    $cmd->configure();
+    $log->error("LEVEL now: '%s'", $LogUtils::LOGLEVEL);
 }
 
-test_logging();
-test_option();
-test_argument();
-test_command();
-test_app();
-test_config();
+sub test_subcmd {
+    my $cmd = CliApp::App->new(
+        name => 'git-url',
+        synopsis => 'a foo cmd',
+        tag => 'common',
+        plugins => [qw(
+            CliApp::Plugin::cliapp
+        )],
+    );
+    my $argv = [qw(--loglevel=trace help --all schmelp --fo)];
+    $cmd->do($argv);
+    # $log->info("After optparse: %s", $argv);
+    # # $cmd->do(qw(--loglevel=trace help));
+    # $log->info("Parsed config: %s", $cmd->config);
+    # $log->info("Parsed config: %s", $cmd->get_command('help')->config);
+}
+
+# test_logging();
+# test_option();
+# test_argument();
+# test_command();
+# test_app();
+# test_config();
+test_subcmd();
 
 done_testing(10);

@@ -1,11 +1,13 @@
 package LogUtils;
+use strict;
+use warnings;
 use Term::ANSIColor;
 
 sub __caller_source {
     my @cpy = @_;
     my $i = 10;
     my $args = [];
-    while (!@{$args[0]} && $i > 1) {
+    while (!$args->[0] && $i > 1) {
         $args = [caller $i--];
     }
     if (@{$args}) {
@@ -19,33 +21,43 @@ sub __caller_source {
 # Logging
 #
 #---------
-our $LOGLEVEL    = 3;
-
+our $LOGLEVEL = 'trace';
 our $LOGLEVELS = {
-    'trace' => 3,
-    'debug' => 2,
-    'info'  => 1,
+    'off'   => -1,
     'error' => 0,
-    'off'   => -1
+    'warn'  => 1,
+    'info'  => 2,
+    'debug' => 3,
+    'trace' => 4,
+};
+our $LOGCOLORS = {
+    'error' => 'bold red',
+    'warn'  => 'bold yellow',
+    'info'  => 'bold green',
+    'debug' => 'bold blue',
+    'trace' => 'blue',
 };
 
 sub _log
 {
-    my ($_msgs, $levelName, $minLevel, $color) = @_;
+    my ($levelName, $_msgs) = @_;
+    # warn StringUtils->dump( \@_ );
     my @msgs = @{$_msgs};
     shift @msgs;
-    if ($LOGLEVEL >= $minLevel) {
+    if ($LOGLEVELS->{$LOGLEVEL} >= $LOGLEVELS->{$levelName}) {
         my $fmt = shift @msgs;
         my @sprintf_values = map { StringUtils->dump($_) } @msgs;
-        printf("[%s] %s\n", colored($levelName, $color), sprintf($fmt, @sprintf_values));
+        printf("[%s] %s\n", colored(uc($levelName), $LOGCOLORS->{$levelName}), sprintf($fmt, @sprintf_values));
     }
     return;
 }
-sub trace { return _log(\@_, "TRACE", 3, 'bold yellow'); }
-sub debug { return _log(\@_, "DEBUG", 2, 'bold blue'); }
-sub info  { return _log(\@_, "INFO",  1, 'bold green'); }
-sub error { return _log(__caller_source(@_), "ERROR", 0, 'bold red' ); }
-sub log_die { error(@{__caller_source(@_)}); return exit 70; }
+sub set_level { $LOGLEVEL = $_[1]; }
+sub trace { return _log( "trace", \@_); }
+sub debug { return _log( "debug", \@_); }
+sub info  { return _log( "info" , \@_); }
+sub warn  { return _log( "warn" , \@_); }
+sub error { return _log( "error",  __caller_source(@_)); }
+sub log_die { error(@{__caller_source(@_)}); return die 70; }
 
 
 #---------

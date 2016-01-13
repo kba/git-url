@@ -9,6 +9,7 @@ sub new {
 
     $self{ref} //= undef;
     $self{env} //= undef;
+    $self{boolean} //= 0;
 
     if ( $self{ref} && $self{ref} ne 'ARRAY' && $self{ref} ne 'HASH' ) {
         LogUtils->log_die(
@@ -19,4 +20,8 @@ sub new {
     return $cls->SUPER::new($cls, [qw(ref env default)], %self);
 }
 
+sub full_name {
+    my ($self) = @_;
+    return join('--', $self->parent->name, $self->name);
+}
 1;

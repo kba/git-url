@@ -23,18 +23,44 @@ sub inject {
     my ($self, $app) = @_;
 
     $app->add_option(
-        name => 'log_level',
+        name => 'loglevel',
         synopsis => 'Logging level',
         tag => 'common',
-        default => 'error'
+        default => $LogUtils::LOGLEVEL,
+        env => 'LOGLEVEL',
+        enum => [keys %{ $LogUtils::LOGLEVELS }],
     );
 
+    # $app->add_command(
+        # name => 'version',
+        # synopsis => 'Show version information',
+        # tag => 'core',
+    # );
     $app->add_command(
-        name => 'version',
-        synopsis => 'Show version information',
+        name => 'help',
+        synopsis => 'Show help',
         tag => 'core',
+        do => sub {
+            my ($this) = @_;
+            $log->debug("YAYAYAYAYAYA");
+        },
+        options => [
+            {
+                name => 'all',
+                synopsis => 'Show full help',
+                boolean => 1,
+                tag => 'common',
+                default => 'false',
+            }
+        ],
     );
 
+}
+
+sub on_configure {
+    my ($self, $app) = @_;
+    $app->get_option('loglevel')->{enum} = [keys %{ $LogUtils::LOGLEVELS }];
+    LogUtils->set_level( $app->config->{loglevel} );
 }
 
 1;
