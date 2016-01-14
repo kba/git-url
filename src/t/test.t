@@ -6,7 +6,6 @@ use lib $SCRIPT_DIR . '/../lib';
 
 use Test::More;
 
-use CliApp::Config;
 use CliApp::Option;
 use CliApp::Command;
 use CliApp::App;
@@ -134,14 +133,19 @@ sub test_config {
 sub test_subcmd {
     my $cmd = CliApp::App->new(
         name => 'git-url',
-        synopsis => 'a foo cmd',
+        synopsis => 'do gitty stuff',
         tag => 'common',
+        version => '0.0.1',
+        build_date => qx(date),
         plugins => [qw(
             CliApp::Plugin::cliapp
         )],
     );
-    my $argv = [qw(--loglevel=trace help --all schmelp --fo)];
-    $cmd->do($argv);
+    # my $argv = [qw(--loglevel=trace help -- --fo)];
+    my $argv = [qw(--loglevel=debug help)];
+    # $log->info("Before optparse: %s", $argv);
+    $cmd->exec($argv);
+    #
     # $log->info("After optparse: %s", $argv);
     # # $cmd->do(qw(--loglevel=trace help));
     # $log->info("Parsed config: %s", $cmd->config);

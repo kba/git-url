@@ -11,6 +11,9 @@ sub new {
     $args{plugins} //= [qw(CliApp::Plugin::cliapp)];
     @plugins = @{ delete $args{plugins} };
     $args{plugins} = {};
+    $args{exec} = sub {};
+
+    ObjectUtils->validate_required_args( $class, [qw(version build_date)],  %args );
 
     my $app = $class->SUPER::new(%args, parent => undef);
 
@@ -42,18 +45,18 @@ sub configure {
     }
 }
 
-sub do {
+sub exec {
     my ($self, $argv) = @_;
     $self->configure( $argv );
     unless (scalar @{ $argv }) {
         $log->log_die("Expected command!");
     }
     my $cmd_name = shift @{ $argv };
-    $log->trace("%s -> do ( %s )", $self->full_name, $cmd_name);
     unless($self->get_command( $cmd_name )) {
-        $log->log_die("No such command '%s'", $cmd_name);
+        $log->log_die("No such command '%s' in %s", $cmd_name, $self->name);
     }
-    $self->get_command( $cmd_name )->do( $argv );
+    my $cmd = $self->get_command( $cmd_name );
+    $log->trace("%s->exec(%s)", $self->name, $cmd->full_name);
+    $cmd->exec( $argv );
 }
-
 1;

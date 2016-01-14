@@ -12,8 +12,9 @@ sub new {
         }
         $self{default} = undef;
     }
+    $self{repeatable} //= undef;
 
-    return $cls->SUPER::new($cls, [qw(required default)], %self);
+    return $cls->SUPER::new($cls, [qw(required default repeatable)], %self);
 }
 
 1;

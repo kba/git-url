@@ -34,6 +34,7 @@ sub validate_required_args
         }
     }
     if ($missing[0]) {
+        delete $_self{parent};
         LogUtils->log_die(
             sprintf(
                 "Missing args [%s] for '%s' constructor: %s",

@@ -21,7 +21,7 @@ sub __caller_source {
 # Logging
 #
 #---------
-our $LOGLEVEL = 'trace';
+our $LOGLEVEL = 'debug';
 our $LOGLEVELS = {
     'off'   => -1,
     'error' => 0,

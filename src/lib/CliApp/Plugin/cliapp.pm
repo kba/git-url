@@ -8,6 +8,16 @@ my $log = 'LogUtils';
 
 use parent 'CliApp::Plugin';
 
+$options = {
+    mode => {
+        name => 'mode',
+        synopsis => 'Output mode',
+        tag => 'core',
+        enum => [@CliApp::SelfDocumenting::_modes],
+        default => 'cli',
+    },
+};
+
 sub new {
     my ($class, %self) = @_;
 
@@ -31,27 +41,42 @@ sub inject {
         enum => [keys %{ $LogUtils::LOGLEVELS }],
     );
 
-    # $app->add_command(
-        # name => 'version',
-        # synopsis => 'Show version information',
-        # tag => 'core',
-    # );
+    $app->add_option(
+        name => 'ini',
+        synopsis => 'Configuration file to use',
+        tag => 'common',
+        default => sub { return $_[0]->app->{default_ini}; },
+        env => 'foo',
+    );
+
+    $app->add_command(
+        name => 'version',
+        synopsis => 'Show version information',
+        tag => 'core',
+        options => [ $options->{mode} ],
+        exec => sub {
+            my ($this, $argv) = @_;
+            print $this->app->doc_version($this->config->{mode});
+        }
+    );
+
     $app->add_command(
         name => 'help',
         synopsis => 'Show help',
         tag => 'core',
-        do => sub {
-            my ($this) = @_;
-            $log->debug("YAYAYAYAYAYA");
+        options => [ $options->{mode} ],
+        exec => sub {
+            my ($this, $argv) = @_;
+            print $this->app->doc_help($this->config->{mode});
         },
-        options => [
+        arguments => [
             {
-                name => 'all',
-                synopsis => 'Show full help',
-                boolean => 1,
+                name => 'arg',
+                synopsis => 'cmd, option etc.',
                 tag => 'common',
-                default => 'false',
-            }
+                required => 0,
+                default => '',
+            },
         ],
     );
 

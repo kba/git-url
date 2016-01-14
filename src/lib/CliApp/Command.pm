@@ -11,38 +11,40 @@ BEGIN {
     no strict 'refs';
     our @_components = qw(command option argument);
     for my $var (@_components) {
-        my $count_method = sprintf "%s::count_%ss", __PACKAGE__, $var;
+        my $plural = $var .'s';
+        my $class = sprintf "CliApp::%s", ucfirst $var;
+
+        my $count_method = sprintf "%s::count_%s", __PACKAGE__, $plural;
+        my $get_method = sprintf "%s::get_%s", __PACKAGE__, $var;
+        my $add_method =  sprintf "%s::add_%s", __PACKAGE__, $var;
+
         *{$count_method} = sub {
             use strict 'refs';
             return scalar(@{ $_[0]->{$var.'s'} });
         };
-        my $get_method = sprintf "%s::get_%s", __PACKAGE__, $var;
+
         *{ $get_method } = sub {
             use strict 'refs';
             my $self = shift;
             my $name = $_[0];
-            if (!$name) {
-                LogUtils->log_die("Must pass value to " . $get_method);
-            }
-            my $plural = $var .'s';
+            LogUtils->log_die("Must pass value to " . $get_method) unless $name;
             if (scalar @_ == 0) {
                 warn "Nothing passed too get_" . $var;
             } elsif (scalar @_ == 1) {
                 return first { $_->name eq $name } @{ $self->{$plural} };
+            } else {
+                # TODO
+                LogUtils->log_die("Not implemented: get_$var with multiarg/hash");
             }
-
         };
-        my $add_method =  sprintf "%s::add_%s", __PACKAGE__, $var;
+
         *{$add_method} = sub {
             use strict 'refs';
             my $self = shift;
-            my $plural = $var .'s';
-            my $class = sprintf "CliApp::%s", ucfirst $var;
-            if ( ref $_[0] && ref $_[0] eq $class ) {
-                push @{ $self->{$plural} }, $_[0];
-            } else {
-                push @{ $self->{$plural} }, $class->new(@_, parent => $self);
-            }
+            my %def = ( ref $_[0] && ref $_[0] eq $class )
+                ? %{ $_[0] }
+                : @_;
+            push @{ $self->{$plural} }, $class->new(%def, parent => $self);
         };
     }
 }
@@ -65,9 +67,9 @@ sub new {
         LogUtils->log_die( "'%s' must be 'HASH' not '%s' %s", 'config', ref $args{config} );
     }
 
-    # $self->do
-    if (! $class->can('do') && !( $args{do} && ref $args{do} && ref $args{do} eq 'CODE')) {
-        LogUtils->log_die("Must either implement a 'do' method or pass a 'do' CODEREF for command %s", \%args);
+    # $self->exec
+    if (!( $args{exec} && ref $args{exec} && ref $args{exec} eq 'CODE')) {
+        LogUtils->log_die("Must either implement a 'exec' method or pass a 'exec' CODEREF for command %s", \%args);
     }
 
     # $self->count_commands XOR $self->count_arguments
@@ -77,6 +79,8 @@ sub new {
 
     # Instantiate
     my $self = $class->SUPER::new($class, [], %args);
+
+    $self->{default_ini} = sprintf "%s/.config/%s/config.ini", $ENV{HOME}, $self->full_name;
 
     # call add_* for command, argument, option
     for my $comp_type (@CliApp::Command::_components) {
@@ -96,7 +100,7 @@ sub configure {
     my ($self, $argv, @inis) = @_;
     $log->trace("%s#configure %s, %s", $self->full_name, $argv, \@inis);
     $argv //= [];
-    $inis[0] //= sprintf "%s/.config/%s/config.ini", $ENV{HOME}, $self->full_name;
+    $inis[0] //= $self->{default_ini};
 
     # 1) Defaults
     $self->{config} = $self->default_config;
@@ -127,7 +131,11 @@ sub default_config {
     my ($self) = @_;
     my $ret = {};
     for my $opt (@{ $self->options }) {
-        $ret->{ $opt->name } = $opt->default;
+        if (ref $opt->default and ref $opt->default eq 'CODE') {
+            $ret->{ $opt->name } = $opt->default->( $self );
+        } else {
+            $ret->{ $opt->name } = $opt->default;
+        }
         if ($opt->env && $ENV{ $opt->env }) {
             $log->trace("Setting '%s' from ENV '%s' = '%s'", $opt->full_name, $opt->env, $ENV{ $opt->env });
             $ret->{ $opt->name } = $ENV{ $opt->env };
@@ -152,6 +160,8 @@ sub optparse_ini {
         for my $line ( grep { !( /^\s*$/mx || /^\s*[#;]/mx ) } @{ LogUtils->log_slurp($filename) } ) {
             if ($line =~ m/^\[/mx) {
                 ($ctx = $line) =~ s/^\s*\[(.*)\]/$1/mx;
+                my $rootname = $self->app->name;
+                $ctx =~ s/^$rootname\.?//mx;
                 $cur_section = $sections->{$ctx} = [];
                 next;
             }
@@ -174,6 +184,9 @@ sub optparse_argv {
     $log->trace("%s#optparse_argv: %s", $self->full_name, $argv);
     my @args_to_parse;
     while (my $arg = shift @{ $argv }) {
+        if ($arg eq '--') {
+            last;
+        }
         if ($arg !~ m/^--/mx) {
             unshift @{$argv}, $arg;
             last;
@@ -192,12 +205,11 @@ sub optparse_kv {
         s/^-*//mx;
         my ($k, $v) = split /\s*=\s*/mx, $_, 2;
         $k =~ s/[^a-zA-Z0-9]/_/mxg;
-        if ($k =~ m/^no/ 
-            && $self->get_option(substr($k,2)))
-        {
+        if ($k =~ m/^no/ && $self->get_option(substr($k, 2))) {
             $k = substr($k, 2);
             $v = 0;
-        } else {
+        }
+        else {
             $v //= 1;
         }
         unless ($self->get_option($k)) {
@@ -228,7 +240,6 @@ sub optparse_kv {
         if ($invalid) {
             $log->log_die(@{$invalid});
         }
-
         if ($opt->{ref} && $opt->{ref} eq 'HASH') {
             $self->config->{$k} //= {};
             $self->config->{$k} = { %{$self->config->{$k}}, %{ $v } };
@@ -236,6 +247,24 @@ sub optparse_kv {
             $self->config->{$k} = $v;
         }
     }
+}
+
+sub exec {
+    my ($self, $argv) = @_;
+    if (scalar @{$argv}) {
+        if (!($self->count_arguments || $self->count_commands)) {
+            $log->log_die("Command '%s' expects neither arguments nor subcommands: %s", $self->full_name, $argv);
+        } elsif ($self->count_commands) {
+            my $cmd_name = shift @{ $argv };
+            my $cmd = $self->get_command( $cmd_name );
+            unless($cmd) {
+                $log->log_die("No such command '%s' in %s", $cmd_name, $self->name);
+            }
+            $log->trace("%s->exec(%s)", $self->name, $cmd->full_name);
+            return $cmd->exec( $self, $argv );
+        }
+    }
+    $self->{exec}->( $self, $argv );
 }
 
 

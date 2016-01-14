@@ -1,6 +1,7 @@
 package StringUtils;
 use LogUtils;
 use Data::Dumper;
+use Term::ANSIColor;
 $Data::Dumper::Terse = 1;
 
 #----------------
@@ -8,6 +9,20 @@ $Data::Dumper::Terse = 1;
 # String helpers
 #
 #----------------
+
+our $styles = {
+    'option'        => 'magenta bold',
+    'value'         => 'cyan',
+    'value-default' => 'cyan bold',
+    'default'       => 'black bold',
+    'command'       => 'green bold',
+    'arg'           => 'yellow bold',
+    'app'           => 'blue bold',
+    'argument'      => 'blue bold',
+    'heading'       => 'underline',
+    'error'         => 'bold red',
+    'bold'          => 'bold',
+};
 
 sub unindent
 {
@@ -44,22 +59,12 @@ sub human_readable
       :                 sprintf('"%s"', $val);
 }
 
-our $styles = {
-    'option'      => 'magenta bold',
-    'default'     => 'black bold',
-    'command'     => 'green bold',
-    'arg'         => 'yellow bold',
-    'optarg'      => 'yellow italic',
-    'script_name' => 'blue bold',
-    'heading'     => 'underline',
-    'error'       => 'bold red',
-};
-
 sub style
 {
     my ($class, $style, $str, @args) = @_;
+    # LogUtils->debug("Style: %s", $style);
     unless ($styles->{$style}) {
-        log_die("Unknown style '$style' at " . join(' ', caller));
+        LogUtils->log_die("Unknown style '$style' at " . join(' ', caller));
     }
     return colored(sprintf($str, @args), $styles->{$style});
 }
