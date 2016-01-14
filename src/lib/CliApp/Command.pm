@@ -3,6 +3,9 @@ use strict;
 use warnings;
 use parent 'CliApp::SelfDocumenting';
 
+use CliApp::Option;
+use CliApp::Argument;
+
 my $log = 'LogUtils';
 my $INI_CACHE = {};
 
