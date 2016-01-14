@@ -24,7 +24,7 @@ sub new {
 
 my $app = GitUrl::App->new();
 use Data::Dumper;
-print Dumper \@ARGV;
+# print Dumper \@ARGV;
 $app->exec(\@ARGV);
 
 1;

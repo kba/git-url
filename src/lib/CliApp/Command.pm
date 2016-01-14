@@ -30,7 +30,8 @@ BEGIN {
             use strict 'refs';
             my $self = shift;
             my $name = $_[0];
-            LogUtils->log_die("Must pass value to " . $get_method) unless $name;
+            # LogUtils->log_die("Must pass value to " . $get_method) unless $name;
+            return unless $name;
             if (scalar @_ == 0) {
                 warn "Nothing passed too get_" . $var;
             } elsif (scalar @_ == 1) {

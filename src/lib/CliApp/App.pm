@@ -14,10 +14,12 @@ sub new {
     my @plugins = @{ delete $args{plugins} };
     $args{plugins} = {};
     $args{exec} = sub {};
+    $args{default_command} //= 'help';
 
     ObjectUtils->validate_required_args( $class, [qw(version build_date)],  %args );
 
-    my $app = $class->SUPER::new(%args, parent => undef);
+    my $app = $class->SUPER::new(%args,
+        parent => undef);
 
     for my $plugin (@plugins) {
         my $plugin_name = ref($plugin) ? ref($plugin) : $plugin;
@@ -51,11 +53,17 @@ sub exec {
     my ($self, $argv) = @_;
     $self->configure( $argv );
     unless (scalar @{ $argv }) {
-        $log->log_die("Expected command!");
+        if ($self->{default_command}) {
+            push @{ $argv }, $self->{default_command}
+        } else {
+            return print $self->doc_help( 'cli', error => "Expected command!" );
+        }
     }
     my $cmd_name = shift @{ $argv };
-    unless($self->get_command( $cmd_name )) {
-        $log->log_die("No such command '%s' in %s", $cmd_name, $self->name);
+    unless ( $self->get_command($cmd_name) ) {
+        return print $self->doc_help( 'cli',
+            error =>
+              sprintf( "No such command '%s' in %s", $cmd_name, $self->name ) );
     }
     my $cmd = $self->get_command( $cmd_name );
     $log->trace("%s->exec(%s)", $self->name, $cmd->full_name);

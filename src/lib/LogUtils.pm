@@ -7,7 +7,7 @@ sub __caller_source {
     my @cpy = @_;
     my $i = 10;
     my $args = [];
-    while (!$args->[0] && $i > 1) {
+    while (!$args->[0] || $i > 1) {
         $args = [caller $i--];
     }
     if (@{$args}) {

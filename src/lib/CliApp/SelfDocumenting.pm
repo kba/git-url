@@ -102,7 +102,7 @@ sub doc_usage {
         $ret .= sprintf " %s", join('|', map { $_->doc_name($mode) } @{ $self->commands });
     }
     if ($self->can('count_arguments') && $self->count_arguments) {
-        $ret .= sprintf " %s", join('|', map { $_->doc_name($mode) } @{ $self->arguments });
+        $ret .= sprintf " <%s>", join('|', map { $_->doc_name($mode) } @{ $self->arguments });
     }
     return $ret;
 }
@@ -111,7 +111,21 @@ sub doc_oneline {
     my ($self, $mode, %args) = @_;
     $self->_require_mode($mode);
     my $s = '';
+    if ($args{parent_name}) {
+        $s .= $self->doc_parent_name($mode);
+    }
     $s .= sprintf("%s  %s\n", $self->doc_usage($mode), $self->synopsis);
+    return $s;
+}
+
+sub doc_parent_name {
+    my ($self, $mode, %args) = @_;
+    $self->_require_mode($mode);
+    my $parent = $self;
+    my $s = '';
+    while ($parent = $parent->parent) {
+        $s .= sprintf "%s %s", $parent->doc_name($mode), $s;
+    }
     return $s;
 }
 
@@ -119,13 +133,14 @@ sub doc_help {
     my ($self, $mode, %args) = @_;
     $self->_require_mode($mode);
     my $indent = $args{indent} //= '  ';
-    my $s = '';
-    my $parent = $self;
-    while ($parent = $parent->parent) {
-        $s = sprintf "%s %s", $parent->doc_name($mode), $s;
+    my $s = $self->doc_oneline($mode, parent => 1);
+    if ($args{error}) {
+        $s.= sprintf("\n[%s] %s\n",
+            $self->style($mode, 'error', 'ERROR'),
+            $args{error});
+        return $s;
     }
-    $s .= $self->doc_oneline($mode);
-    $s .= sprintf "\n%s\n\n", $self->description;
+    $s .= sprintf("\n%s\n\n", $self->description($mode));
     for my $comp (qw(options commands arguments)) {
         my $count = sprintf "count_%s", $comp;
         if ($self->can($count) && $self->$count) {
