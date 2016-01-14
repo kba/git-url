@@ -1,4 +1,6 @@
 package GitUrl::App;
+use strict;
+use warnings;
 use parent 'CliApp::App';
 use GitUrl::Plugin::giturl;
 
@@ -11,16 +13,18 @@ sub new {
         name => 'git-url',
         synopsis => 'Work with Git platforms',
         tag => 'app',
-        plugins => [qw(
-            CliApp::Plugin::cliapp
-            GitUrl::Plugin::giturl
-        )]
+        plugins => [
+            'CliApp::Plugin::cliapp',
+            'GitUrl::Plugin::giturl',
+        ]
     );
 
     return $self;
 }
 
 my $app = GitUrl::App->new();
-$app->exec([qw(help)]);
+use Data::Dumper;
+print Dumper \@ARGV;
+$app->exec(\@ARGV);
 
 1;

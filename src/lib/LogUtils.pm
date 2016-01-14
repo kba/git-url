@@ -37,6 +37,7 @@ our $LOGCOLORS = {
     'debug' => 'bold blue',
     'trace' => 'blue',
 };
+
 sub list_levels
 {
     my ($class) = @_;

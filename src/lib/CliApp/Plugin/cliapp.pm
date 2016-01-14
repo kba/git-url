@@ -53,6 +53,7 @@ sub inject {
         name => 'version',
         synopsis => 'Show version information',
         tag => 'core',
+        options => [ $options->{mode}, ],
         exec => sub {
             my ($this, $argv) = @_;
             print $this->app->doc_version($this->config->{mode});

@@ -1,4 +1,6 @@
 package CliApp::App;
+use strict;
+use warnings;
 use parent 'CliApp::Command';
 
 use CliApp::Plugin::cliapp;
@@ -9,7 +11,7 @@ sub new {
     my ($class, %args) = @_;
 
     $args{plugins} //= [qw(CliApp::Plugin::cliapp)];
-    @plugins = @{ delete $args{plugins} };
+    my @plugins = @{ delete $args{plugins} };
     $args{plugins} = {};
     $args{exec} = sub {};
 
@@ -59,4 +61,37 @@ sub exec {
     $log->trace("%s->exec(%s)", $self->name, $cmd->full_name);
     $cmd->exec( $argv );
 }
+
+sub doc_version {
+    my ($self, $mode) = @_;
+    $self->_require_mode($mode);
+    my $app = $self->app;
+    my $ret = '';
+    $ret .= $self->doc_usage($mode);
+    $ret .= "\n";
+    $ret .= sprintf( "%s %s\n",
+        $self->style($mode, 'heading', 'Version:'),
+        $self->style($mode, 'value',   $app->version));
+    $ret .= sprintf( "%s %s\n",
+        $self->style($mode, 'heading', 'Build Date:'),
+        $self->style($mode, 'value',   $app->build_date));
+    $ret .= sprintf( "%s %s\n",
+        $self->style( $mode, 'heading', 'Plugins:' ),
+        $self->style( $mode, 'value', "%s", StringUtils->dump( [ keys %{ $app->plugins } ] ))
+    );
+    $ret .= sprintf( "%s %s\n",
+        $self->style($mode, 'heading', 'Configuration file:'),
+        $self->style($mode, 'value',   $app->{default_ini}));
+    $ret .= $self->style( $mode, 'heading', "Configuration:\n" );
+    $ret .= sprintf( "  %s : %s\n",
+        $self->style($mode, 'command', $self->name),
+        $self->style($mode, 'config', StringUtils->dump($self->config)));
+    for (@{$self->commands}) {
+        $ret .= sprintf( "  %s : %s\n",
+            $self->style($mode, 'command', $_->full_name),
+            $self->style($mode, 'config', StringUtils->dump($_->config)));
+    }
+    return $ret;
+}
+
 1;

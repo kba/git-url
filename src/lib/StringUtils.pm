@@ -11,6 +11,7 @@ $Data::Dumper::Terse = 1;
 #----------------
 
 our $styles = {
+    'config'        => 'white bold',
     'option'        => 'magenta bold',
     'value'         => 'cyan',
     'value-default' => 'cyan bold',

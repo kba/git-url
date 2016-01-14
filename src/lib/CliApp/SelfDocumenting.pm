@@ -11,7 +11,7 @@ our @_modes = qw(ini man cli);
 
 sub _require_mode {
     my ($self, $mode) = @_;
-    LogUtils->error("Mode '%s' not one of %s", $mode, \@_modes) unless (
+    LogUtils->log_die("Mode '%s' not one of %s in %s", $mode, \@_modes, [caller]) unless (
         $mode && first { $_ eq $mode } @_modes
     );
 }
@@ -141,28 +141,6 @@ sub doc_help {
     }
     # $s .= "\n";
     return $s;
-}
-
-sub doc_version {
-    my ($self, $mode) = @_;
-    $self->_require_mode($mode);
-    my $app = $self->app;
-    my $ret = '';
-    $ret .= $self->doc_usage($mode);
-    $ret .= "\n";
-    $ret .= sprintf(
-        "%s %s\n",
-        $self->style($mode, 'heading', 'Version:'),
-        $self->style($mode, 'value',   $app->version));
-    $ret .= sprintf(
-        "%s %s\n",
-        $self->style($mode, 'heading', 'Build Date:'),
-        $self->style($mode, 'value',   $app->build_date));
-    $ret .= sprintf(
-        "%s %s\n",
-        $self->style($mode, 'heading', 'Configuration file:'),
-        $self->style($mode, 'value',   $app->{default_ini}));
-    return $ret;
 }
 
 
