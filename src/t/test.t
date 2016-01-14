@@ -1,4 +1,6 @@
 use Cwd qw(realpath);
+use strict;
+use warnings;
 use File::Basename qw(dirname);
 my $SCRIPT_DIR;
 BEGIN { $SCRIPT_DIR = realpath(dirname(realpath $0)) };
@@ -11,7 +13,7 @@ use CliApp::Command;
 use CliApp::App;
 use CliApp::Argument;
 
-my $log = LogUtils;
+my $log = 'LogUtils';
 
 sub test_option {
     my $opt = CliApp::Option->new(

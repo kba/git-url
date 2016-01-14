@@ -1,4 +1,6 @@
 package CliApp::SelfDocumenting;
+use strict;
+use warnings;
 use StringUtils;
 use ObjectUtils;
 use List::Util qw(first);
@@ -41,7 +43,9 @@ sub new {
         no strict 'refs';
         next if $var eq 'validate';
         next if $var eq 'exec';
-        *{ sprintf "%s::%s", $subclass, $var } = sub {
+        my $method = sprintf "%s::%s", $subclass, $var;
+        next if __PACKAGE__->can($method);
+        *{$method} = sub {
             # LogUtils->trace("%s->{%s} = %s", $_[0], $var, $_[0]->{$var});
             return $_[0]->{$var};
         };
@@ -59,7 +63,7 @@ sub app {
 
 sub full_name {
     my ($self) = @_;
-    @parents = ($self->name);
+    my @parents = ($self->name);
     while ($self = $self->parent) {
         unshift @parents, $self->name;
     }
@@ -71,7 +75,7 @@ sub validate {
     if ($self->{validate}) {
         return $self->{validate}->( $self, @args );
     } elsif ($self->{enum}) {
-        for $val (@args) {
+        for my $val (@args) {
             grep { $val eq $_ } @{ $self->{enum} } or return [
                 "Invalid value '%s' for option '%s'. Allowed: %s", $val, $self->name, $self->enum
             ];
@@ -103,32 +107,39 @@ sub doc_usage {
     return $ret;
 }
 
-sub doc_help {
-    my ($self, $mode, $indent) = @_;
+sub doc_oneline {
+    my ($self, $mode, %args) = @_;
     $self->_require_mode($mode);
-    $indent //= '';
     my $s = '';
-    $s .= sprintf("%s  %s\n", $self->doc_usage($mode), $self->description);
-    if ($self->can('count_options') && $self->count_options) {
-        $s .= "\n";
-        for my $opt (@{$self->options}) {
-            $s .= sprintf "  %s  %s\n", $opt->doc_usage($mode), $opt->synopsis;
+    $s .= sprintf("%s  %s\n", $self->doc_usage($mode), $self->synopsis);
+    return $s;
+}
+
+sub doc_help {
+    my ($self, $mode, %args) = @_;
+    $self->_require_mode($mode);
+    my $indent = $args{indent} //= '  ';
+    my $s = '';
+    my $parent = $self;
+    while ($parent = $parent->parent) {
+        $s = sprintf "%s %s", $parent->doc_name($mode), $s;
+    }
+    $s .= $self->doc_oneline($mode);
+    $s .= sprintf "\n%s\n\n", $self->description;
+    for my $comp (qw(options commands arguments)) {
+        my $count = sprintf "count_%s", $comp;
+        if ($self->can($count) && $self->$count) {
+            $s .= sprintf("%s\n", $self->style($mode, 'heading', ucfirst($comp)));
+            for (@{$self->$comp}) {
+                my $help = $args{full}
+                    ? $_->doc_help($mode, indent => "$indent  ")
+                    : $_->doc_oneline($mode);
+                $help =~ s/^/$indent/gmx;
+                $s .= $help;
+            }
         }
     }
-    if ($self->can('count_commands') && $self->count_commands) {
-        $s .= "\n";
-        for my $cmd (@{$self->commands}) {
-            $s .= $cmd->doc_help($mode, "$indent  ");
-        }
-    }
-    if ($self->can('count_arguments') && $self->count_arguments) {
-        $s .= "\n";
-        for my $arg (@{$self->arguments}) {
-            $s .= $arg->doc_help($mode, "$indent  ");
-        }
-    }
-    $s .= "\n";
-    $s =~ s/^/$indent/gmx;
+    # $s .= "\n";
     return $s;
 }
 

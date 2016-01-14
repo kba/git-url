@@ -37,6 +37,11 @@ our $LOGCOLORS = {
     'debug' => 'bold blue',
     'trace' => 'blue',
 };
+sub list_levels
+{
+    my ($class) = @_;
+    return [sort { $LOGLEVELS->{$b} <=> $LOGLEVELS->{$a} } keys %{ $LOGLEVELS }];
+}
 
 sub _log
 {
