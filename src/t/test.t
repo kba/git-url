@@ -13,7 +13,7 @@ use CliApp::Command;
 use CliApp::App;
 use CliApp::Argument;
 
-my $log = 'LogUtils';
+my $log = SimpleLogger->new;
 
 sub test_option {
     my $opt = CliApp::Option->new(
@@ -121,15 +121,15 @@ sub test_config {
         )],
     );
     # $log->warn($cmd->get_command('help')->get_option('all')->full_name);
-    $log->error("LEVEL now: '%s'", $LogUtils::LOGLEVEL);
+    $log->error("LEVEL now: '%s'", $log->loglevel);
     $log->info("Default config: %s", $cmd->default_config);
     $cmd->configure([qw(--loglevel=trace)],  $SCRIPT_DIR . "/assets/config.ini");
     $log->info("Parsed config: %s", $cmd->config);
-    $log->error("LEVEL now: '%s'", $LogUtils::LOGLEVEL);
+    $log->error("LEVEL now: '%s'", $log->loglevel);
 
     $ENV{LOGLEVEL} = 'info';
     $cmd->configure();
-    $log->error("LEVEL now: '%s'", $LogUtils::LOGLEVEL);
+    $log->error("LEVEL now: '%s'", $log->loglevel);
 }
 
 sub test_subcmd {
@@ -144,7 +144,7 @@ sub test_subcmd {
         )],
     );
     # my $argv = [qw(--loglevel=trace help -- --fo)];
-    my $argv = [qw(--loglevel=debug help)];
+    my $argv = [qw(--loglevel=error help)];
     # $log->info("Before optparse: %s", $argv);
     $cmd->exec($argv);
     #

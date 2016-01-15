@@ -3,10 +3,11 @@ use strict;
 use warnings;
 use parent 'CliApp::SelfDocumenting';
 
+use FileUtils;
+
 use CliApp::Option;
 use CliApp::Argument;
 
-my $log = 'LogUtils';
 my $INI_CACHE = {};
 our @_components;
 
@@ -32,7 +33,7 @@ BEGIN {
             use strict 'refs';
             my $self = shift;
             my $name = $_[0];
-            # LogUtils->log_die("Must pass value to " . $get_method) unless $name;
+            # $self->log->log_die("Must pass value to " . $get_method) unless $name;
             return unless $name;
             if (scalar @_ == 0) {
                 warn "Nothing passed too get_" . $var;
@@ -40,7 +41,7 @@ BEGIN {
                 return first { $_->name eq $name } @{ $self->{$plural} };
             } else {
                 # TODO
-                LogUtils->log_die("Not implemented: get_$var with multiarg/hash");
+                $self->log->log_die("Not implemented: get_$var with multiarg/hash");
             }
         };
 
@@ -55,7 +56,7 @@ BEGIN {
     }
 #}}}
 }
-
+#{{{ new
 sub new {
     my ($class, %args) = @_;
 
@@ -63,7 +64,7 @@ sub new {
         my $plural = $_ . 's';
         $args{$plural} = [] unless exists $args{$plural};
         unless ( ref $args{$plural} && ref $args{$plural} eq 'ARRAY' ) {
-            LogUtils->log_die( "'%s' must be 'ARRAY' not '%s' %s",
+            $class->log->log_die( "'%s' must be 'ARRAY' not '%s' %s",
                 $plural, ref $args{$plural} );
         }
     }
@@ -71,17 +72,17 @@ sub new {
     # $self->config
     $args{config} //= {};
     if (exists $args{config} && (!ref $args{config} || ref $args{config} ne 'HASH')) {
-        LogUtils->log_die("'%s' must be 'HASH' not '%s' %s", 'config', ref $args{config});
+        $class->log->log_die("'%s' must be 'HASH' not '%s' %s", 'config', ref $args{config});
     }
 
     # $self->exec
     if (!($args{exec} && ref $args{exec} && ref $args{exec} eq 'CODE')) {
-        LogUtils->log_die("Must either implement a 'exec' method or pass a 'exec' CODEREF for command %s", \%args);
+        $class->log->log_die("Must either implement a 'exec' method or pass a 'exec' CODEREF for command %s", \%args);
     }
 
     # $self->count_commands XOR $self->count_arguments
     if (scalar(@{$args{commands}}) > 0 && scalar @{$args{arguments}} > 0) {
-        LogUtils->log_die("Cannot set both commands and arguments for '%s'", $args{name});
+        $class->log->log_die("Cannot set both commands and arguments for '%s'", $args{name});
     }
 
     # Instantiate
@@ -103,10 +104,11 @@ sub new {
 
     return $self;
 }
-
+#}}}
+#{{{ configure
 sub configure {
     my ($self, $argv, @inis) = @_;
-    $log->trace("%s#configure %s, %s", $self->full_name, $argv, \@inis);
+    $self->log->trace("%s#configure %s, %s", $self->full_name, $argv, \@inis);
     $argv //= [];
     $inis[0] //= $self->{default_ini};
 
@@ -131,7 +133,7 @@ sub configure {
     }
     unshift @{ $argv }, @to_parse;
 }
-
+#}}}
 #{{{ option parsing
 sub optparse_default {
     my ($self) = @_;
@@ -143,27 +145,27 @@ sub optparse_default {
             $ret->{ $opt->name } = $opt->default;
         }
         if ($opt->env && $ENV{ $opt->env }) {
-            $log->trace("Setting '%s' from ENV '%s' = '%s'", $opt->full_name, $opt->env, $ENV{ $opt->env });
+            $self->log->trace("Setting '%s' from ENV '%s' = '%s'", $opt->full_name, $opt->env, $ENV{ $opt->env });
             $ret->{ $opt->name } = $ENV{ $opt->env };
         }
     }
-    # $log->trace("DEFAULT: %s", $ret);
+    # $self->log->trace("DEFAULT: %s", $ret);
     return $ret;
 }
 
 sub optparse_ini {
     my ($self, $filename) = @_;
-    $log->trace("%s#optparse_ini $filename", $self->full_name);
+    $self->log->trace("%s#optparse_ini $filename", $self->full_name);
     unless (exists $INI_CACHE->{$filename}) {
         unless (-r $filename) {
-            $log->warn("No such INI file: $filename");
+            $self->log->warn("No such INI file: $filename");
             $INI_CACHE->{$filename} = {};
             return;
         };
         my $ctx = '';
         my $sections = {$ctx=>[]};
         my $cur_section = $sections->{$ctx};
-        for my $line ( grep { !( /^\s*$/mx || /^\s*[#;]/mx ) } @{ LogUtils->log_slurp($filename) } ) {
+        for my $line ( grep { !( /^\s*$/mx || /^\s*[#;]/mx ) } @{ FileUtils->slurp($filename) } ) {
             if ($line =~ m/^\[/mx) {
                 ($ctx = $line) =~ s/^\s*\[(.*)\]/$1/mx;
                 my $rootname = $self->app->name;
@@ -173,11 +175,11 @@ sub optparse_ini {
             }
             push @{$cur_section}, $line
         };
-        # $log->debug("By Section: %s", $sections);
+        # $self->log->debug("By Section: %s", $sections);
         $INI_CACHE->{$filename} = $sections;
     }
-    # $log->debug(" IAM %s", $self->full_name);
-    # $log->info("%s", $INI_CACHE->{$filename}->{ $self->full_name });
+    # $self->log->debug(" IAM %s", $self->full_name);
+    # $self->log->info("%s", $INI_CACHE->{$filename}->{ $self->full_name });
     if (exists $INI_CACHE->{$filename}->{ $self->full_name }) {
         $self->optparse_kv( @{ $INI_CACHE->{$filename}->{ $self->full_name } });
     }
@@ -187,7 +189,7 @@ sub optparse_ini {
 
 sub optparse_argv {
     my ($self, $argv) = @_;
-    $log->trace("%s#optparse_argv: %s", $self->full_name, $argv);
+    $self->log->trace("%s#optparse_argv: %s", $self->full_name, $argv);
     my @args_to_parse;
     while (my $arg = shift @{ $argv }) {
         if ($arg eq '--') {
@@ -204,7 +206,7 @@ sub optparse_argv {
 
 sub optparse_kv {
     my ($self, @kvpairs) = @_;
-    $log->trace("%s#optparse_kv: %s k-v-pairs", $self->full_name, scalar @kvpairs);
+    $self->log->trace("%s#optparse_kv: %s k-v-pairs", $self->full_name, scalar @kvpairs);
     for (@kvpairs) {
         s/^\s+|\s+$//gmx;
         s/^-*//mx;
@@ -218,7 +220,7 @@ sub optparse_kv {
             $v //= 1;
         }
         unless ($self->get_option($k)) {
-            $log->log_die("No such option '%s' for cmd '%s'", $k, $self->full_name);
+            $self->log->log_die("No such option '%s' for cmd '%s'", $k, $self->full_name);
         }
         my $opt = $self->get_option($k);
         if ($opt->{ref}) {
@@ -243,7 +245,7 @@ sub optparse_kv {
         }
         my $invalid = $opt->validate($v);
         if ($invalid) {
-            $log->log_die(@{$invalid});
+            $self->log->log_die(@{$invalid});
         }
         if ($opt->{ref} && $opt->{ref} eq 'HASH') {
             $self->config->{$k} //= {};
@@ -254,24 +256,25 @@ sub optparse_kv {
     }
 }
 #}}}
-
+#{{{ exec
 sub exec {
     my ($self, $argv) = @_;
     if (scalar @{$argv}) {
         if (!($self->count_arguments || $self->count_commands)) {
-            $log->log_die("Command '%s' expects neither arguments nor subcommands: %s", $self->full_name, $argv);
+            $self->log->log_die("Command '%s' expects neither arguments nor subcommands: %s", $self->full_name, $argv);
         } elsif ($self->count_commands) {
             my $cmd_name = shift @{ $argv };
             my $cmd = $self->get_command( $cmd_name );
             unless($cmd) {
-                $log->log_die("No such command '%s' in %s", $cmd_name, $self->name);
+                $self->log->log_die("No such command '%s' in %s", $cmd_name, $self->name);
             }
-            $log->trace("%s->exec(%s)", $self->name, $cmd->full_name);
+            $self->log->trace("%s->exec(%s)", $self->name, $cmd->full_name);
             return $cmd->exec( $self, $argv );
         }
     }
     $self->{exec}->( $self, $argv );
 }
+#}}}
 
 
 1;

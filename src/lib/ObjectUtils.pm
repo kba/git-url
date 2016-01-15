@@ -1,7 +1,8 @@
 package ObjectUtils;
-use LogUtils;
+use SimpleLogger;
 use Data::Dumper;
 $Data::Dumper::Terse = 1;
+my $log = SimpleLogger->new();
 
 #-------------
 #
@@ -19,7 +20,7 @@ sub validate_required_methods
         }
     }
     if ($missing_methods[0]) {
-        LogUtils->log_die(sprintf("Class '%s' is missing methods [%s]", $class, join(',', @missing_methods)));
+        $log->log_die(sprintf("Class '%s' is missing methods [%s]", $class, join(',', @missing_methods)));
     }
     return;
 }
@@ -35,7 +36,7 @@ sub validate_required_args
     }
     if ($missing[0]) {
         delete $_self{parent};
-        LogUtils->log_die(
+        $log->log_die(
             sprintf(
                 "Missing args [%s] for '%s' constructor: %s",
                 join(',', @missing), $class, Dumper(\%_self)));
@@ -54,7 +55,7 @@ sub validate_known_args
         }
     }
     if ($unknown[0]) {
-        LogUtils->log_die(sprintf(
+        $log->log_die(sprintf(
                 "Unknown args [%s] for '%s' constructor: %s",
                 join(',', @unknown), $cls, Dumper(\%_self)));
     }

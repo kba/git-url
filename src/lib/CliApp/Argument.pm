@@ -8,7 +8,7 @@ sub new {
 
     if ($self{required}) {
         if (exists $self{default}) {
-            LogUtils->log_die("A required argument cannot have a default: %s", \%self);
+            $cls->log->log_die("A required argument cannot have a default: %s", \%self);
         }
         $self{default} = undef;
     }

@@ -1,10 +1,10 @@
 package CliApp::SelfDocumenting;
 use strict;
 use warnings;
+use SimpleLogger;
 use StringUtils;
 use ObjectUtils;
 use List::Util qw(first);
-use LogUtils;
 
 my @_required = qw(name synopsis tag parent);
 our @_modes = qw(ini man cli);
@@ -35,7 +35,7 @@ sub new {
 }
 
 
-sub log { return 'LogUtils'; }
+sub log { return SimpleLogger->new(); }
 
 sub _require_mode {
     my ($self, $mode) = @_;
@@ -119,6 +119,7 @@ sub doc_oneline {
         $s .= $self->doc_parent_name($mode);
     }
     $s .= sprintf("%s  %s\n", $self->doc_usage($mode), $self->synopsis);
+
     return $s;
 }
 

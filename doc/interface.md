@@ -2,10 +2,7 @@
 StringUtils
     style( style_name, @sprintf_args );
 
-LogUtils
-    VARS
-        LOGLEVEL
-        LOGLEVELS
+SimpleLoggers (singleton)
     METHODS
         dump( $thing )
         log_trace(@sprintf_args)

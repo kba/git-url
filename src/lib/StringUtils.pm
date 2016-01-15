@@ -1,8 +1,10 @@
 package StringUtils;
-use LogUtils;
+use SimpleLogger;
 use Data::Dumper;
 use Term::ANSIColor;
 $Data::Dumper::Terse = 1;
+
+my $log = SimpleLogger->new();
 
 #----------------
 #
@@ -54,7 +56,7 @@ sub human_readable
       ? 'NONE'
       : ref $val ? ref $val eq 'ARRAY' ? sprintf("%s", join(",", @{$val}))
           : ref $val eq 'HASH' ? sprintf("%s", join(',', map {join ':', $_, $val->{$_}} sort keys %{$val}))
-            : LogUtils->log_die("Unsupported ref type '%s'", ref $val)
+            : $log->log_die("Unsupported ref type '%s'", ref $val)
       : $val =~ /^1$/mx ? 'true'
       : $val =~ /^0$/mx ? 'false'
       :                 sprintf('"%s"', $val);
@@ -63,9 +65,9 @@ sub human_readable
 sub style
 {
     my ($class, $style, $str, @args) = @_;
-    # LogUtils->debug("Style: %s", $style);
+    # $log->debug("Style: %s", $style);
     unless ($styles->{$style}) {
-        LogUtils->log_die("Unknown style '$style' at " . join(' ', caller));
+        $log->log_die("Unknown style '$style' at " . join(' ', caller));
     }
     return colored(sprintf($str, @args), $styles->{$style});
 }

@@ -12,9 +12,9 @@ sub new {
     $self{boolean} //= 0;
 
     if ( $self{ref} && $self{ref} ne 'ARRAY' && $self{ref} ne 'HASH' ) {
-        LogUtils->log_die(
+        $cls->log->log_die(
             "'ref' must be HASH or ARRAY or undef, not '%s'. In %s",
-            $self{ref}, LogUtils->dump( \%self ) );
+            $self{ref}, \%self);
     }
 
     return $cls->SUPER::new($cls, [qw(ref env default)], %self);
@@ -34,7 +34,7 @@ sub doc_name {
 
 sub doc_usage {
     my ($self, $mode) = @_;
-    # LogUtils->debug('HERE: %s', $self->doc_usage($mode));
+    # $self->log->debug('HERE: %s', $self->doc_usage($mode));
     $self->_require_mode($mode);
     my $s = '';
     $s .= $self->doc_name($mode);
@@ -51,5 +51,14 @@ sub doc_usage {
     }
     return $s;
 }
+
+sub doc_oneline {
+    my ($self, $mode, %args) = @_;
+    my $s = $self->SUPER::doc_oneline($mode, %args);
+    my $default = $self->style($mode, 'default', "  [%s]", $self->parent->config->{ $self->name });
+    $s =~ s/\n/$default\n/;
+    return $s;
+}
+
 
 1;
