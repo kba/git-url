@@ -8,8 +8,6 @@ BEGIN {
     $libpath = realpath(dirname(realpath($0)) . "/../lib");
 }
 use lib $libpath;
-use GitUrl::Plugin::bitbucket;
-
 use GitUrl::App;
 
 GitUrl::App->new()->exec(\@ARGV);

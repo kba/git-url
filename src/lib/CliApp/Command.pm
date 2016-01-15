@@ -8,11 +8,13 @@ use CliApp::Argument;
 
 my $log = 'LogUtils';
 my $INI_CACHE = {};
+our @_components;
 
 BEGIN {
+#{{{ setup get_*, count_*, add_*
     use List::Util qw(first);
     no strict 'refs';
-    our @_components = qw(command option argument);
+    @_components = qw(command option argument);
     for my $var (@_components) {
         my $plural = $var .'s';
         my $class = sprintf "CliApp::%s", ucfirst $var;
@@ -42,7 +44,7 @@ BEGIN {
             }
         };
 
-        *{$add_method} = sub {
+        *{ $add_method } = sub {
             use strict 'refs';
             my $self = shift;
             my %def = ( ref $_[0] && ref $_[0] eq $class )
@@ -51,12 +53,13 @@ BEGIN {
             push @{ $self->{$plural} }, $class->new(%def, parent => $self);
         };
     }
+#}}}
 }
 
 sub new {
     my ($class, %args) = @_;
 
-    for (@CliApp::Command::_components) {
+    for (@_components) {
         my $plural = $_ . 's';
         $args{$plural} = [] unless exists $args{$plural};
         unless ( ref $args{$plural} && ref $args{$plural} eq 'ARRAY' ) {
@@ -67,12 +70,12 @@ sub new {
 
     # $self->config
     $args{config} //= {};
-    if (exists $args{config} && (!ref $args{config} || ref $args{config} ne 'HASH') ) {
-        LogUtils->log_die( "'%s' must be 'HASH' not '%s' %s", 'config', ref $args{config} );
+    if (exists $args{config} && (!ref $args{config} || ref $args{config} ne 'HASH')) {
+        LogUtils->log_die("'%s' must be 'HASH' not '%s' %s", 'config', ref $args{config});
     }
 
     # $self->exec
-    if (!( $args{exec} && ref $args{exec} && ref $args{exec} eq 'CODE')) {
+    if (!($args{exec} && ref $args{exec} && ref $args{exec} eq 'CODE')) {
         LogUtils->log_die("Must either implement a 'exec' method or pass a 'exec' CODEREF for command %s", \%args);
     }
 
@@ -84,10 +87,11 @@ sub new {
     # Instantiate
     my $self = $class->SUPER::new($class, [], %args);
 
+    # default config
     $self->{default_ini} = sprintf "%s/.config/%s/config.ini", $ENV{HOME}, $self->full_name;
 
     # call add_* for command, argument, option
-    for my $comp_type (@CliApp::Command::_components) {
+    for my $comp_type (@_components) {
         my $plural = $comp_type . 's';
         my $add_method = sprintf "%s::add_%s", __PACKAGE__, $comp_type;
         my $before = delete $self->{$plural};
@@ -107,15 +111,12 @@ sub configure {
     $inis[0] //= $self->{default_ini};
 
     # 1) Defaults
-    $self->{config} = $self->default_config;
+    $self->{config} = $self->optparse_default;
     # 3) Files
     push @inis, $self->config->{ini} if ($self->config->{ini});
     $self->optparse_ini( $_ ) for (@inis);
     # 5) ARGV
     $self->optparse_argv($argv);
-
-    # stop unless there's more to parse
-    # return unless scalar @{ $argv };
 
     # configure sub commands
     my @to_parse = ();
@@ -131,7 +132,8 @@ sub configure {
     unshift @{ $argv }, @to_parse;
 }
 
-sub default_config {
+#{{{ option parsing
+sub optparse_default {
     my ($self) = @_;
     my $ret = {};
     for my $opt (@{ $self->options }) {
@@ -200,7 +202,6 @@ sub optparse_argv {
     $self->optparse_kv( @args_to_parse );
 }
 
-
 sub optparse_kv {
     my ($self, @kvpairs) = @_;
     $log->trace("%s#optparse_kv: %s k-v-pairs", $self->full_name, scalar @kvpairs);
@@ -252,6 +253,7 @@ sub optparse_kv {
         }
     }
 }
+#}}}
 
 sub exec {
     my ($self, $argv) = @_;

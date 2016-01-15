@@ -1,6 +1,7 @@
 package CliApp::App;
 use strict;
 use warnings;
+use ObjectUtils;
 use parent 'CliApp::Command';
 
 use CliApp::Plugin::cliapp;
@@ -18,8 +19,7 @@ sub new {
 
     ObjectUtils->validate_required_args( $class, [qw(version build_date)],  %args );
 
-    my $app = $class->SUPER::new(%args,
-        parent => undef);
+    my $app = $class->SUPER::new(%args, parent => undef);
 
     for my $plugin (@plugins) {
         my $plugin_name = ref($plugin) ? ref($plugin) : $plugin;
@@ -62,8 +62,7 @@ sub exec {
     my $cmd_name = shift @{ $argv };
     unless ( $self->get_command($cmd_name) ) {
         return print $self->doc_help( 'cli',
-            error =>
-              sprintf( "No such command '%s' in %s", $cmd_name, $self->name ) );
+            error => sprintf( "No such command '%s' in %s", $cmd_name, $self->name ) );
     }
     my $cmd = $self->get_command( $cmd_name );
     $log->trace("%s->exec(%s)", $self->name, $cmd->full_name);

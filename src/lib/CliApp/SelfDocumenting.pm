@@ -9,9 +9,37 @@ use LogUtils;
 my @_required = qw(name synopsis tag parent);
 our @_modes = qw(ini man cli);
 
+sub new {
+    my ($class, $subclass, $subclass_required, %_self) = @_;
+
+    $_self{description} //= $_self{synopsis};
+    # $_self{parent} //= undef;
+
+    ObjectUtils->validate_required_args( $subclass, [@_required, @{ $subclass_required }],  %_self );
+
+    for my $var (keys %_self) {
+        no strict 'refs';
+        next if $var eq 'validate';
+        next if $var eq 'exec';
+        my $method = sprintf "%s::%s", $subclass, $var;
+        next if __PACKAGE__->can($method);
+        *{$method} = sub {
+            # $self->log->trace("%s->{%s} = %s", $_[0], $var, $_[0]->{$var});
+            return $_[0]->{$var};
+        };
+    }
+    my $self = bless \%_self, $subclass;
+    # $self->log->debug("self->{name}: '%s'", $self->{name});
+    # $self->log->debug("Can 'name': '%s' [%s]", $self->can('name'), $self->name);
+    return $self;
+}
+
+
+sub log { return 'LogUtils'; }
+
 sub _require_mode {
     my ($self, $mode) = @_;
-    LogUtils->log_die("Mode '%s' not one of %s in %s", $mode, \@_modes, [caller]) unless (
+    $self->log->log_die("Mode '%s' not one of %s in %s", $mode, \@_modes, [caller]) unless (
         $mode && first { $_ eq $mode } @_modes
     );
 }
@@ -29,31 +57,6 @@ sub style {
     } else {
         return sprintf($str, @args);
     }
-}
-
-sub new {
-    my ($class, $subclass, $subclass_required, %_self) = @_;
-
-    $_self{description} //= $_self{synopsis};
-    # $_self{parent} //= undef;
-
-    ObjectUtils->validate_required_args( $subclass, [@_required, @{ $subclass_required }],  %_self );
-
-    for my $var (keys %_self) {
-        no strict 'refs';
-        next if $var eq 'validate';
-        next if $var eq 'exec';
-        my $method = sprintf "%s::%s", $subclass, $var;
-        next if __PACKAGE__->can($method);
-        *{$method} = sub {
-            # LogUtils->trace("%s->{%s} = %s", $_[0], $var, $_[0]->{$var});
-            return $_[0]->{$var};
-        };
-    }
-    my $self = bless \%_self, $subclass;
-    # LogUtils->debug("self->{name}: '%s'", $self->{name});
-    # LogUtils->debug("Can 'name': '%s' [%s]", $self->can('name'), $self->name);
-    return $self;
 }
 
 sub app {
@@ -84,6 +87,7 @@ sub validate {
     return;
 }
 
+#{{{ doc_* Methods for documentation
 sub doc_name {
     my ($self, $mode) = @_;
     $self->_require_mode($mode);
@@ -147,8 +151,8 @@ sub doc_help {
             $s .= sprintf("%s\n", $self->style($mode, 'heading', ucfirst($comp)));
             for (@{$self->$comp}) {
                 my $help = $args{full}
-                    ? $_->doc_help($mode, indent => "$indent  ")
-                    : $_->doc_oneline($mode);
+                ? $_->doc_help($mode, indent => "$indent  ")
+                : $_->doc_oneline($mode);
                 $help =~ s/^/$indent/gmx;
                 $s .= $help;
             }
@@ -157,6 +161,7 @@ sub doc_help {
     # $s .= "\n";
     return $s;
 }
+#}}}
 
 
 1;

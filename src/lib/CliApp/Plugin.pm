@@ -6,7 +6,7 @@ use parent 'CliApp::SelfDocumenting';
 sub new {
     my ($class, %self) = @_;
 
-    $name = __PACKAGE__;
+    $name = lc $class;
     $name =~ s/^.*://mx;
     $self{name} //= $name;
 

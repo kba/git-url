@@ -23,7 +23,7 @@ sub new {
         plugins => [
             'CliApp::Plugin::cliapp',
             'GitUrl::Plugin::giturl',
-            'CliApp::Plugin::bitbucket',
+            'GitUrl::Plugin::bitbucket',
         ],
         %self,
     );

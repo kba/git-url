@@ -3,17 +3,15 @@ use strict;
 use warnings;
 use Term::ANSIColor;
 
-sub __caller_source {
-    my @cpy = @_;
+sub __stack_trace {
+    my $s = shift;
     my $i = 10;
-    my $args = [];
-    while (!$args->[0] || $i > 1) {
-        $args = [caller $i--];
+    while ($i > 1) {
+        my @stack = caller $i--;
+        last unless @stack;
+        $s .= sprintf("\n\t in %s +%s", $stack[1], $stack[2]);
     }
-    if (@{$args}) {
-        $cpy[1] .= sprintf("\n\t in %s +%s", $args->[1], $args->[2]);
-    }
-    return [@cpy];
+    return $s;
 }
 
 #---------
@@ -46,25 +44,22 @@ sub list_levels
 
 sub _log
 {
-    my ($levelName, $_msgs) = @_;
-    # warn StringUtils->dump( \@_ );
-    my @msgs = @{$_msgs};
-    shift @msgs;
-    if ($LOGLEVELS->{$LOGLEVEL} >= $LOGLEVELS->{$levelName}) {
-        my $fmt = shift @msgs;
-        my @sprintf_values = map { StringUtils->dump($_) } @msgs;
-        printf("[%s] %s\n", colored(uc($levelName), $LOGCOLORS->{$levelName}), sprintf($fmt, @sprintf_values));
+    my ($levelName, $class, $fmt, @msgs) = @_;
+    if ($LOGLEVELS->{$levelName} >= $LOGLEVELS->{warn}) {
+        $fmt = __stack_trace($fmt);
     }
-    return;
+    return if ($LOGLEVELS->{$LOGLEVEL} < $LOGLEVELS->{$levelName});
+    return sprintf( "[%s] %s\n",
+        colored( uc($levelName), $LOGCOLORS->{$levelName} ),
+        sprintf( $fmt, map { StringUtils->dump($_) } @msgs ) );
 }
 sub set_level { $LOGLEVEL = $_[1]; }
-sub trace { return _log( "trace", \@_); }
-sub debug { return _log( "debug", \@_); }
-sub info  { return _log( "info" , \@_); }
-sub warn  { return _log( "warn" , \@_); }
-sub error { return _log( "error",  __caller_source(@_)); }
-sub log_die { error(@{__caller_source(@_)}); return die 70; }
-
+sub trace { printf _log( "trace", @_ ) }
+sub debug { printf _log( "debug", @_ ) }
+sub info  { printf _log( "info",  @_ ) }
+sub warn  { printf _log( "warn",  @_ ) }
+sub error { printf _log( "error", @_ ) }
+sub log_die { die _log( "error", @_ ); }
 
 #---------
 #
