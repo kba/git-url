@@ -3,8 +3,6 @@ use strict;
 use warnings;
 use parent 'Clapp::SelfDocumenting';
 
-use Clapp::Utils::File;
-
 use Clapp::Option;
 use Clapp::Argument;
 
@@ -165,7 +163,7 @@ sub optparse_ini {
         my $ctx = '';
         my $sections = {$ctx=>[]};
         my $cur_section = $sections->{$ctx};
-        for my $line ( grep { !( /^\s*$/mx || /^\s*[#;]/mx ) } @{ Clapp::Utils::File->slurp($filename) } ) {
+        for my $line ( grep { !( /^\s*$/mx || /^\s*[#;]/mx ) } @{ $self->utils->{file}->slurp($filename) } ) {
             if ($line =~ m/^\[/mx) {
                 ($ctx = $line) =~ s/^\s*\[(.*)\]/$1/mx;
                 my $rootname = $self->app->name;

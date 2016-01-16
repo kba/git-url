@@ -1,4 +1,4 @@
-package Repo;
+package GitUrl::Repo;
 
 use Clapp::Utils::Object;
 

@@ -1,14 +1,18 @@
+## Clapp
+
+Commandline Apps made purty.
+
 ```
 StringUtils
+    dump( $thing )
     style( style_name, @sprintf_args );
 
 SimpleLoggers (singleton)
     METHODS
-        dump( $thing )
-        log_trace(@sprintf_args)
-        log_debug(@sprintf_args)
-        log_info(@sprintf_args)
-        log_error(@sprintf_args)
+        trace(@sprintf_args)
+        debug(@sprintf_args)
+        info(@sprintf_args)
+        error(@sprintf_args)
         log_die(@sprintf_args)
 
 ObjectUtils
@@ -27,26 +31,13 @@ SelfDocumenting
             default
 
     doc_usage( )
-    doc_usage_options( )
-    doc_usage_commands( )
-    doc_usage_arguments( )
-    doc_usage_args( )
-    doc_help( mode => cli|ini|man )
+    doc_help( mode => cli|ini|man, verbosity => [0..4] )
 
 Option extends SelfDocumenting
     ref=undef, env=undef
 
 Argument extends SelfDocumenting
     required=false
-
-Config
-    Option get( );
-    Map<String,Any> load(
-        Map<String, Any> orig,
-        file => $ini_file,
-        config => \%config,
-        args => \@args
-    )
 
 Command extends SelfDocumenting
     Map<String,Option> options;
@@ -56,13 +47,34 @@ Command extends SelfDocumenting
     Command parent;
     CODE action;
 
-    parse_args( @args );
-    Command get_command( String cmd_name );
-    Command parent( );
-    Command root( );
-    sub do;
+    configure( \@ARGV );
+        -> plugin.each on_configure
+    Command|Argument|Option get_by_name ( name )
+    Command get_[command|argument|option] ( String name )
+    Command parent( )
+    Command app( )
+    sub exec
 
 App extends Command
     Plugin
     Command parent = null;
+
+Plugin extends SelfDocumenting
+    inject( $self, $app )
+    on_configure( $self, $app )
+```
+
+## GitUrl
+
+```
+Utils::Tmux
+    list_sessions()
+    create_or_attach( $sesison_name )
+
+Utils::Git
+    find_git_dir ( $file )
+
+Repo
+    parse( $str )
+
 ```

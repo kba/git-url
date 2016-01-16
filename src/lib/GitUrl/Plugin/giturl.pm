@@ -1,4 +1,7 @@
 package GitUrl::Plugin::giturl;
+use strict;
+use warnings;
+use GitUrl::Utils::Tmux;
 
 use parent 'Clapp::Plugin';
 
@@ -29,6 +32,9 @@ sub inject {
         tag => 'common',
         exec => sub {
             my ($this, $argv) = @_;
+            for my $sess (@{ GitUrl::Utils::Tmux->list_sessions }) {
+                print $self->style('cli', 'option', "  * %s\n", $sess);
+            }
         }
     )
 

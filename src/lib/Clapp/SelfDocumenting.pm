@@ -63,10 +63,10 @@ sub style {
         $ret =~ s/^.*:://;
         return $ret;
     }
-    @args = map {Clapp::Utils::String->dump($_)} @args;
+    @args = map {$self->app->utils->{string}->dump($_)} @args;
     $self->_require_mode(mode=>$mode);
     if ($mode eq 'cli') {
-        return Clapp::Utils::String->style($style, $str, @args);
+        return $self->app->utils->{string}->style($style, $str, @args);
     } else {
         return sprintf($str, @args);
     }
@@ -221,11 +221,11 @@ sub doc_version {
     $ret .= $self->style( $mode, 'heading', "Configuration:\n" );
     $ret .= sprintf( "  %s : %s\n",
         $self->style($mode, 'command', $self->name),
-        $self->style($mode, 'config', Clapp::Utils::String->dump($self->config)));
+        $self->style($mode, 'config', $self->app->utils->{string}->dump($self->config)));
     for (@{$self->commands}) {
         $ret .= sprintf( "  %s : %s\n",
             $self->style($mode, 'command', $_->full_name),
-            $self->style($mode, 'config', Clapp::Utils::String->dump($_->config)));
+            $self->style($mode, 'config', $self->app->utils->{string}->dump($_->config)));
     }
     return $ret;
 }

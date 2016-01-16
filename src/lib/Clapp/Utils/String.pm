@@ -4,6 +4,8 @@ use Data::Dumper;
 use Term::ANSIColor;
 $Data::Dumper::Terse = 1;
 
+use parent 'Clapp::Utils';
+
 my $log = Clapp::Utils::SimpleLogger->new();
 
 #----------------

@@ -19,7 +19,6 @@ sub new {
         synopsis => 'Work with Git platforms',
         tag => 'app',
         plugins => [
-            'Clapp::Plugin::cliapp',
             'GitUrl::Plugin::giturl',
             'GitUrl::Plugin::bitbucket',
         ],
@@ -34,57 +33,62 @@ sub parse_location {
     unless ($loc) {
         $loc = realpath getcwd;
     }
-    if ($loc =~ /^(https?:|git@)/mx) {
+    if ($loc =~ /^(https?:|.+@[^\/]+:)/mx) {
         $self->_parse_url($loc);
-    }
-    else {
+    } elsif (-e $loc) {
         $self->_parse_filename($loc);
+    } else {
+        $self->_parse_shortcut($loc);
     }
-    $self->_reset_urls();
 }
 
-sub _parse_filename
-{
-    my ($self, $path) = @_;
-    $self->log->trace("Parsing filename $path");
-    my $loc = {};
-
-    # split path into filename:line:column
-    ($path, $loc->{line}, $loc->{column}) = split(':', $path);
-    if (!-e $path) {
-        $self->log->info("No such file/directory: $path");
-        $self->log->info(sprintf("Interpreting '%s' as '%s' shortcut", $path, $self->config->{clone}));
-        return $self->_parse_url($self->get_plugin($self->config->{clone})->to_url($self, $path));
-    }
-    $path = File::Spec->rel2abs($path);
-    my $dir = HELPER::_git_dir_for_filename($path);
-    unless ($dir) {
-        $self->log->log_die("Not in a Git dir: '$path'");
-    }
-    $self->{path_to_repo} = $dir;
-    $self->{path_within_repo} = substr($path, length($dir)) || '.';
-    $self->{path_within_repo} =~ s,^/,,mx;
-
-    my $gitconfig = join('/', $self->{path_to_repo}, '.git', 'config');
-    my @lines = @{ HELPER::_slurp $gitconfig};
-    my $baseURL;
-    OUTER:
-    while (my $line = shift(@lines)) {
-        if ($line =~ /\[remote\s+.origin.\]/mx) {
-            while (my $line = shift(@lines)) {
-                if ($line =~ /^\s*url/mx) {
-                    ($baseURL) = $line =~ / = (.*)/mx;
-                    last OUTER;
-                }
-            }
-        }
-    }
-    if (!$baseURL) {
-        $self->log->log_die("Couldn't find a remote");
-    }
-    $self->_parse_url($baseURL);
-    return;
+sub _parse_filename {
+    my ($self, $loc) = @_;
+    # my $gitdir = GitUrl::Utils
 }
+
+# sub _parse_filename
+# {
+#     my ($self, $path) = @_;
+#     $self->log->trace("Parsing filename $path");
+#     my $loc = {};
+
+#     # split path into filename:line:column
+#     ($path, $loc->{line}, $loc->{column}) = split(':', $path);
+#     if (!-e $path) {
+#         $self->log->info("No such file/directory: $path");
+#         $self->log->info(sprintf("Interpreting '%s' as '%s' shortcut", $path, $self->config->{clone}));
+#         return $self->_parse_url($self->get_plugin($self->config->{clone})->to_url($self, $path));
+#     }
+#     $path = File::Spec->rel2abs($path);
+#     my $dir = HELPER::_git_dir_for_filename($path);
+#     unless ($dir) {
+#         $self->log->log_die("Not in a Git dir: '$path'");
+#     }
+#     $self->{path_to_repo} = $dir;
+#     $self->{path_within_repo} = substr($path, length($dir)) || '.';
+#     $self->{path_within_repo} =~ s,^/,,mx;
+
+#     my $gitconfig = join('/', $self->{path_to_repo}, '.git', 'config');
+#     my @lines = @{ HELPER::_slurp $gitconfig};
+#     my $baseURL;
+#     OUTER:
+#     while (my $line = shift(@lines)) {
+#         if ($line =~ /\[remote\s+.origin.\]/mx) {
+#             while (my $line = shift(@lines)) {
+#                 if ($line =~ /^\s*url/mx) {
+#                     ($baseURL) = $line =~ / = (.*)/mx;
+#                     last OUTER;
+#                 }
+#             }
+#         }
+#     }
+#     if (!$baseURL) {
+#         $self->log->log_die("Couldn't find a remote");
+#     }
+#     $self->_parse_url($baseURL);
+#     return;
+# }
 
 # my $app = GitUrl::App->new();
 # use Data::Dumper;

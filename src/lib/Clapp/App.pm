@@ -9,9 +9,16 @@ use Clapp::Plugin::cliapp;
 sub new {
     my ($class, %args) = @_;
 
-    $args{plugins} //= [qw(Clapp::Plugin::cliapp)];
+    $args{plugins} //= [];
+    unshift @{ $args{plugins} }, qw(Clapp::Plugin::cliapp);
     my @plugins = @{ delete $args{plugins} };
     $args{plugins} = {};
+
+    $args{utils} //= [];
+    unshift @{ $args{utils} }, qw(Clapp::Utils::File Clapp::Utils::String);
+    my @utils = @{ delete $args{utils} };
+    $args{utils} = {};
+
     $args{exec} = sub {};
     $args{default_command} //= 'help';
 
@@ -28,6 +35,12 @@ sub new {
             : $plugin->new(parent => $self);
         # $self->log->debug("%s", $self);
         $self->plugins->{$plugin_name}->inject($self);
+    }
+    for my $util (@utils) {
+        my $util_name = ref($util) ? ref($util) : $util;
+        $util_name =~ s/^.*://mx;
+        $util_name = lc $util_name;
+        $self->utils->{$util_name} = $util->new(app => $self);
     }
 
     if ($self->count_arguments || ! $self->count_commands) {
