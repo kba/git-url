@@ -1,10 +1,10 @@
-package Clapp::StringUtils;
-use Clapp::SimpleLogger;
+package Clapp::Utils::String;
+use Clapp::Utils::SimpleLogger;
 use Data::Dumper;
 use Term::ANSIColor;
 $Data::Dumper::Terse = 1;
 
-my $log = Clapp::SimpleLogger->new();
+my $log = Clapp::Utils::SimpleLogger->new();
 
 #----------------
 #

@@ -1,9 +1,9 @@
-package Clapp::FileUtils;
+package Clapp::Utils::File;
 use strict;
 use warnings;
 
-use Clapp::SimpleLogger;
-my $log = Clapp::SimpleLogger->new;
+use Clapp::Utils::SimpleLogger;
+my $log = Clapp::Utils::SimpleLogger->new;
 
 #---------
 #

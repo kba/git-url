@@ -1,4 +1,4 @@
-package Clapp::SimpleLogger;
+package Clapp::Utils::SimpleLogger;
 use strict;
 use warnings;
 use Term::ANSIColor;
@@ -96,7 +96,7 @@ sub _log
     }
     return sprintf( "[%s] %s\n",
         colored( uc($level_name), $self->colors->{$level_name} ),
-        sprintf( $fmt, map { Clapp::StringUtils->dump($_) } @msgs ) );
+        sprintf( $fmt, map { Clapp::Utils::String->dump($_) } @msgs ) );
 }
 sub trace { printf shift->_log( "trace", @_ ) }
 sub debug { printf shift->_log( "debug", @_ ) }

@@ -2,8 +2,8 @@ package Clapp::Plugin::cliapp;
 use strict;
 use warnings;
 
-use Clapp::SimpleLogger;
-use Clapp::StringUtils;
+use Clapp::Utils::SimpleLogger;
+use Clapp::Utils::String;
 
 use parent 'Clapp::Plugin';
 
@@ -32,12 +32,12 @@ sub inject {
     my ($self, $app) = @_;
 
     $app->add_option(
-        name => 'loglevel',
+        name => 'log',
         synopsis => 'Logging level',
         tag => 'common',
-        default => Clapp::SimpleLogger->new->loglevel,
+        default => Clapp::Utils::SimpleLogger->new->loglevel,
         env => 'LOGLEVEL',
-        enum => Clapp::SimpleLogger->new->levels,
+        enum => Clapp::Utils::SimpleLogger->new->levels,
     );
 
     $app->add_option(
@@ -98,8 +98,8 @@ sub inject {
 
 sub on_configure {
     my ($self, $app) = @_;
-    $app->get_option('loglevel')->{enum} = Clapp::SimpleLogger->new->levels;
-    Clapp::SimpleLogger->new->loglevel( $app->config->{loglevel} );
+    $app->get_option('log')->{enum} = Clapp::Utils::SimpleLogger->new->levels;
+    Clapp::Utils::SimpleLogger->new->loglevel( $app->config->{log} );
 }
 
 1;

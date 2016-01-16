@@ -1,7 +1,7 @@
 package Clapp::App;
 use strict;
 use warnings;
-use Clapp::ObjectUtils;
+use Clapp::Utils::Object;
 use parent 'Clapp::Command';
 
 use Clapp::Plugin::cliapp;
@@ -15,7 +15,7 @@ sub new {
     $args{exec} = sub {};
     $args{default_command} //= 'help';
 
-    Clapp::ObjectUtils->validate_required_args( $class, [qw(version build_date)],  %args );
+    Clapp::Utils::Object->validate_required_args( $class, [qw(version build_date)],  %args );
 
     my $self = $class->SUPER::new(%args, parent => undef);
 
@@ -51,12 +51,11 @@ sub exec {
     my ($self, $argv) = @_;
     $self->configure( $argv );
     if ($self->count_commands && ! scalar @{ $argv }) {
-        return print $self->doc_help( mode => 'cli', error => "Expected command!", verbosity => 1 );
+        $self->exit_error("Expected command!");
     }
     my $cmd_name = shift @{ $argv };
     unless ( $self->get_command($cmd_name) ) {
-        return print $self->doc_help( mode => 'cli',
-            error => sprintf( "No such command '%s' in %s", $cmd_name, $self->name ) );
+        $self->exit_error("No such command '%s' in %s", $cmd_name, $self->name );
     }
     my $cmd = $self->get_command( $cmd_name );
     $self->log->trace("exec(%s)", $cmd->full_name);

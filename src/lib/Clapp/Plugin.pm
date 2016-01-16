@@ -1,5 +1,5 @@
 package Clapp::Plugin;
-use Clapp::ObjectUtils;
+use Clapp::Utils::Object;
 
 use parent 'Clapp::SelfDocumenting';
 
@@ -10,7 +10,7 @@ sub new {
     $name =~ s/^.*://mx;
     $self{name} //= $name;
 
-    Clapp::ObjectUtils->validate_required_methods($class, 'inject', 'on_configure');
+    Clapp::Utils::Object->validate_required_methods($class, 'inject', 'on_configure');
 
     return $class->SUPER::new($class, [], %self);
 }

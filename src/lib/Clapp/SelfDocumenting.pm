@@ -1,11 +1,11 @@
 package Clapp::SelfDocumenting;
 use strict;
 use warnings;
-use Clapp::SimpleLogger;
-use Clapp::StringUtils;
+use Clapp::Utils::SimpleLogger;
+use Clapp::Utils::String;
 use List::Util qw(first);
 
-use Clapp::ObjectUtils;
+use Clapp::Utils::Object;
 
 my @_required = qw(name synopsis tag parent);
 our @_modes = qw(ini man cli);
@@ -23,7 +23,7 @@ sub new {
     $_self{description} //= $_self{synopsis};
     # $_self{parent} //= undef;
 
-    Clapp::ObjectUtils->validate_required_args( $subclass, [@_required, @{ $subclass_required }],  %_self );
+    Clapp::Utils::Object->validate_required_args( $subclass, [@_required, @{ $subclass_required }],  %_self );
 
     for my $var (keys %_self) {
         no strict 'refs';
@@ -54,7 +54,7 @@ sub get_by_name {
     return $self->get_argument($name) if ($self->arguments && $self->get_argument($name));
 }
 
-sub log { return Clapp::SimpleLogger->new(); }
+sub log { return Clapp::Utils::SimpleLogger->new(); }
 
 sub style {
     my ($self, $mode, $style, $str, @args) = @_;
@@ -63,10 +63,10 @@ sub style {
         $ret =~ s/^.*:://;
         return $ret;
     }
-    @args = map {Clapp::StringUtils->dump($_)} @args;
+    @args = map {Clapp::Utils::String->dump($_)} @args;
     $self->_require_mode(mode=>$mode);
     if ($mode eq 'cli') {
-        return Clapp::StringUtils->style($style, $str, @args);
+        return Clapp::Utils::String->style($style, $str, @args);
     } else {
         return sprintf($str, @args);
     }
@@ -130,6 +130,16 @@ sub doc_usage {
         $ret .= sprintf " <%s>", join('|', map { $_->doc_name(%args) } @{ $self->arguments });
     }
     return $ret;
+}
+
+sub exit_error {
+    my ($self, $msg, @args) = @_;
+    print $self->doc_help(
+        mode => 'cli',
+        verbosity => 1,
+        error => sprintf($msg, @args),
+    );
+    exit 1;
 }
 
 sub doc_help {
@@ -211,11 +221,11 @@ sub doc_version {
     $ret .= $self->style( $mode, 'heading', "Configuration:\n" );
     $ret .= sprintf( "  %s : %s\n",
         $self->style($mode, 'command', $self->name),
-        $self->style($mode, 'config', Clapp::StringUtils->dump($self->config)));
+        $self->style($mode, 'config', Clapp::Utils::String->dump($self->config)));
     for (@{$self->commands}) {
         $ret .= sprintf( "  %s : %s\n",
             $self->style($mode, 'command', $_->full_name),
-            $self->style($mode, 'config', Clapp::StringUtils->dump($_->config)));
+            $self->style($mode, 'config', Clapp::Utils::String->dump($_->config)));
     }
     return $ret;
 }

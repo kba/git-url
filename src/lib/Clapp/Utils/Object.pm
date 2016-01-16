@@ -1,8 +1,8 @@
-package Clapp::ObjectUtils;
-use Clapp::SimpleLogger;
+package Clapp::Utils::Object;
+use Clapp::Utils::SimpleLogger;
 use Data::Dumper;
 $Data::Dumper::Terse = 1;
-my $log = Clapp::SimpleLogger->new();
+my $log = Clapp::Utils::SimpleLogger->new();
 
 #-------------
 #
