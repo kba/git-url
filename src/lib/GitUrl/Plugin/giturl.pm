@@ -1,6 +1,6 @@
 package GitUrl::Plugin::giturl;
 
-use parent 'CliApp::Plugin';
+use parent 'Clapp::Plugin';
 
 sub new {
     my ($class, %self) = @_;

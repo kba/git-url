@@ -1,6 +1,6 @@
 package GitUrl::Plugin::bitbucket;
 
-use CliApp::FileUtils;
+use Clapp::FileUtils;
 use GitUrl::PlatformPlugin;
 
 use parent 'GitUrl::PlatformPlugin';
@@ -28,8 +28,8 @@ sub to_url
 sub repo_create
 {
     my ($cls, $self) = @_;
-    CliApp::ObjectUtils->require_hash("config", $self->{config}, ['bitbucket_user', 'bitbucket_password']);
-    CliApp::ObjectUtils->require_hash("location", $self, ['repo_name']);
+    Clapp::ObjectUtils->require_hash("config", $self->{config}, ['bitbucket_user', 'bitbucket_password']);
+    Clapp::ObjectUtils->require_hash("location", $self, ['repo_name']);
     if ($self->{owner} ne $self->{config}->{bitbucket_user}) {
         return HELPER::log_info(
             sprintf(
@@ -58,7 +58,7 @@ curl -i -s -XPOST -u $user:$password -H "Content-Type: application/json" \\
 $api_url \\
 -d '$json'
 EOCMD
-    my $resp = CliApp::FileUtils->qx($forkCmd);
+    my $resp = Clapp::FileUtils->qx($forkCmd);
     if ([ split("\n", $resp) ]->[0] !~ 201) {
         HELPER::log_die("Failed to create the repo: $resp");
     }
@@ -86,7 +86,7 @@ sub repo_fork
         '-XPOST',
         $api_url
     );
-    my $resp = CliApp::FileUtils->qx($forkCmd);
+    my $resp = Clapp::FileUtils->qx($forkCmd);
     if ([ split("\n", $resp) ]->[0] !~ 202) {
         HELPER::log_die("Failed to fork the repo: $resp");
     }

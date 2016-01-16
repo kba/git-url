@@ -1,12 +1,12 @@
-package CliApp::Command;
+package Clapp::Command;
 use strict;
 use warnings;
-use parent 'CliApp::SelfDocumenting';
+use parent 'Clapp::SelfDocumenting';
 
-use CliApp::FileUtils;
+use Clapp::FileUtils;
 
-use CliApp::Option;
-use CliApp::Argument;
+use Clapp::Option;
+use Clapp::Argument;
 
 my $INI_CACHE = {};
 our @_components;
@@ -18,7 +18,7 @@ BEGIN {
     @_components = qw(command option argument);
     for my $var (@_components) {
         my $plural = $var .'s';
-        my $class = sprintf "CliApp::%s", ucfirst $var;
+        my $class = sprintf "Clapp::%s", ucfirst $var;
 
         my $count_method = sprintf "%s::count_%s", __PACKAGE__, $plural;
         my $get_method = sprintf "%s::get_%s", __PACKAGE__, $var;
@@ -165,7 +165,7 @@ sub optparse_ini {
         my $ctx = '';
         my $sections = {$ctx=>[]};
         my $cur_section = $sections->{$ctx};
-        for my $line ( grep { !( /^\s*$/mx || /^\s*[#;]/mx ) } @{ CliApp::FileUtils->slurp($filename) } ) {
+        for my $line ( grep { !( /^\s*$/mx || /^\s*[#;]/mx ) } @{ Clapp::FileUtils->slurp($filename) } ) {
             if ($line =~ m/^\[/mx) {
                 ($ctx = $line) =~ s/^\s*\[(.*)\]/$1/mx;
                 my $rootname = $self->app->name;

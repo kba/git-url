@@ -1,9 +1,9 @@
-package CliApp::FileUtils;
+package Clapp::FileUtils;
 use strict;
 use warnings;
 
-use CliApp::SimpleLogger;
-my $log = CliApp::SimpleLogger->new;
+use Clapp::SimpleLogger;
+my $log = Clapp::SimpleLogger->new;
 
 #---------
 #

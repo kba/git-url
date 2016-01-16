@@ -1,11 +1,11 @@
-package CliApp::SelfDocumenting;
+package Clapp::SelfDocumenting;
 use strict;
 use warnings;
-use CliApp::SimpleLogger;
-use CliApp::StringUtils;
+use Clapp::SimpleLogger;
+use Clapp::StringUtils;
 use List::Util qw(first);
 
-use CliApp::ObjectUtils;
+use Clapp::ObjectUtils;
 
 my @_required = qw(name synopsis tag parent);
 our @_modes = qw(ini man cli);
@@ -23,7 +23,7 @@ sub new {
     $_self{description} //= $_self{synopsis};
     # $_self{parent} //= undef;
 
-    CliApp::ObjectUtils->validate_required_args( $subclass, [@_required, @{ $subclass_required }],  %_self );
+    Clapp::ObjectUtils->validate_required_args( $subclass, [@_required, @{ $subclass_required }],  %_self );
 
     for my $var (keys %_self) {
         no strict 'refs';
@@ -54,7 +54,7 @@ sub get_by_name {
     return $self->get_argument($name) if ($self->arguments && $self->get_argument($name));
 }
 
-sub log { return CliApp::SimpleLogger->new(); }
+sub log { return Clapp::SimpleLogger->new(); }
 
 sub style {
     my ($self, $mode, $style, $str, @args) = @_;
@@ -63,10 +63,10 @@ sub style {
         $ret =~ s/^.*:://;
         return $ret;
     }
-    @args = map {CliApp::StringUtils->dump($_)} @args;
+    @args = map {Clapp::StringUtils->dump($_)} @args;
     $self->_require_mode(mode=>$mode);
     if ($mode eq 'cli') {
-        return CliApp::StringUtils->style($style, $str, @args);
+        return Clapp::StringUtils->style($style, $str, @args);
     } else {
         return sprintf($str, @args);
     }
@@ -211,11 +211,11 @@ sub doc_version {
     $ret .= $self->style( $mode, 'heading', "Configuration:\n" );
     $ret .= sprintf( "  %s : %s\n",
         $self->style($mode, 'command', $self->name),
-        $self->style($mode, 'config', CliApp::StringUtils->dump($self->config)));
+        $self->style($mode, 'config', Clapp::StringUtils->dump($self->config)));
     for (@{$self->commands}) {
         $ret .= sprintf( "  %s : %s\n",
             $self->style($mode, 'command', $_->full_name),
-            $self->style($mode, 'config', CliApp::StringUtils->dump($_->config)));
+            $self->style($mode, 'config', Clapp::StringUtils->dump($_->config)));
     }
     return $ret;
 }

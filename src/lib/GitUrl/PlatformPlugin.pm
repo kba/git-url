@@ -1,12 +1,12 @@
 package GitUrl::PlatformPlugin;
-use CliApp::ObjectUtils;
+use Clapp::ObjectUtils;
 
-use parent 'CliApp::Plugin';
+use parent 'Clapp::Plugin';
 
 sub new {
     my ($class, %args) = @_;
 
-    CliApp::ObjectUtils->validate_required_methods($class, 'to_url');
+    Clapp::ObjectUtils->validate_required_methods($class, 'to_url');
 
     return $class->SUPER::new( %args );
 }

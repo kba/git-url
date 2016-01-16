@@ -1,7 +1,7 @@
-package CliApp::Plugin;
-use CliApp::ObjectUtils;
+package Clapp::Plugin;
+use Clapp::ObjectUtils;
 
-use parent 'CliApp::SelfDocumenting';
+use parent 'Clapp::SelfDocumenting';
 
 sub new {
     my ($class, %self) = @_;
@@ -10,7 +10,7 @@ sub new {
     $name =~ s/^.*://mx;
     $self{name} //= $name;
 
-    CliApp::ObjectUtils->validate_required_methods($class, 'inject', 'on_configure');
+    Clapp::ObjectUtils->validate_required_methods($class, 'inject', 'on_configure');
 
     return $class->SUPER::new($class, [], %self);
 }

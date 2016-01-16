@@ -1,21 +1,21 @@
-package CliApp::App;
+package Clapp::App;
 use strict;
 use warnings;
-use CliApp::ObjectUtils;
-use parent 'CliApp::Command';
+use Clapp::ObjectUtils;
+use parent 'Clapp::Command';
 
-use CliApp::Plugin::cliapp;
+use Clapp::Plugin::cliapp;
 
 sub new {
     my ($class, %args) = @_;
 
-    $args{plugins} //= [qw(CliApp::Plugin::cliapp)];
+    $args{plugins} //= [qw(Clapp::Plugin::cliapp)];
     my @plugins = @{ delete $args{plugins} };
     $args{plugins} = {};
     $args{exec} = sub {};
     $args{default_command} //= 'help';
 
-    CliApp::ObjectUtils->validate_required_args( $class, [qw(version build_date)],  %args );
+    Clapp::ObjectUtils->validate_required_args( $class, [qw(version build_date)],  %args );
 
     my $self = $class->SUPER::new(%args, parent => undef);
 

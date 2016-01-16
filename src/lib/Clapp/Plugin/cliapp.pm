@@ -1,18 +1,18 @@
-package CliApp::Plugin::cliapp;
+package Clapp::Plugin::cliapp;
 use strict;
 use warnings;
 
-use CliApp::SimpleLogger;
-use CliApp::StringUtils;
+use Clapp::SimpleLogger;
+use Clapp::StringUtils;
 
-use parent 'CliApp::Plugin';
+use parent 'Clapp::Plugin';
 
 my $options = {
     mode => {
         name => 'mode',
         synopsis => 'Output mode',
         tag => 'core',
-        enum => [@CliApp::SelfDocumenting::_modes],
+        enum => [@Clapp::SelfDocumenting::_modes],
         default => 'cli',
     },
 };
@@ -22,7 +22,7 @@ sub new {
 
     return $class->SUPER::new(
         %self,
-        synopsis => 'Core plugin for CliApp',
+        synopsis => 'Core plugin for Clapp',
         tag => 'core',
     );
 
@@ -35,9 +35,9 @@ sub inject {
         name => 'loglevel',
         synopsis => 'Logging level',
         tag => 'common',
-        default => CliApp::SimpleLogger->new->loglevel,
+        default => Clapp::SimpleLogger->new->loglevel,
         env => 'LOGLEVEL',
-        enum => CliApp::SimpleLogger->new->levels,
+        enum => Clapp::SimpleLogger->new->levels,
     );
 
     $app->add_option(
@@ -98,8 +98,8 @@ sub inject {
 
 sub on_configure {
     my ($self, $app) = @_;
-    $app->get_option('loglevel')->{enum} = CliApp::SimpleLogger->new->levels;
-    CliApp::SimpleLogger->new->loglevel( $app->config->{loglevel} );
+    $app->get_option('loglevel')->{enum} = Clapp::SimpleLogger->new->levels;
+    Clapp::SimpleLogger->new->loglevel( $app->config->{loglevel} );
 }
 
 1;

@@ -1,7 +1,7 @@
-package CliApp::Argument;
+package Clapp::Argument;
 use strict;
 use warnings;
-use parent 'CliApp::SelfDocumenting';
+use parent 'Clapp::SelfDocumenting';
 
 sub new {
     my ($cls, %self) = @_;

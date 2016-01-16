@@ -1,7 +1,7 @@
 package GitUrl::App;
 use strict;
 use warnings;
-use parent 'CliApp::App';
+use parent 'Clapp::App';
 
 use Cwd qw(getcwd realpath);
 use File::Basename qw(dirname);
@@ -19,7 +19,7 @@ sub new {
         synopsis => 'Work with Git platforms',
         tag => 'app',
         plugins => [
-            'CliApp::Plugin::cliapp',
+            'Clapp::Plugin::cliapp',
             'GitUrl::Plugin::giturl',
             'GitUrl::Plugin::bitbucket',
         ],
