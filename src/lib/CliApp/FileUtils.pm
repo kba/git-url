@@ -2,8 +2,8 @@ package CliApp::FileUtils;
 use strict;
 use warnings;
 
-use SimpleLogger;
-my $log = SimpleLogger->new;
+use CliApp::SimpleLogger;
+my $log = CliApp::SimpleLogger->new;
 
 #---------
 #

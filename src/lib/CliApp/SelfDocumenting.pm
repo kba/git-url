@@ -1,8 +1,8 @@
 package CliApp::SelfDocumenting;
 use strict;
 use warnings;
-use SimpleLogger;
-use StringUtils;
+use CliApp::SimpleLogger;
+use CliApp::StringUtils;
 use List::Util qw(first);
 
 use CliApp::ObjectUtils;
@@ -54,7 +54,7 @@ sub get_by_name {
     return $self->get_argument($name) if ($self->arguments && $self->get_argument($name));
 }
 
-sub log { return SimpleLogger->new(); }
+sub log { return CliApp::SimpleLogger->new(); }
 
 sub style {
     my ($self, $mode, $style, $str, @args) = @_;
@@ -63,10 +63,10 @@ sub style {
         $ret =~ s/^.*:://;
         return $ret;
     }
-    @args = map {StringUtils->dump($_)} @args;
+    @args = map {CliApp::StringUtils->dump($_)} @args;
     $self->_require_mode(mode=>$mode);
     if ($mode eq 'cli') {
-        return StringUtils->style($style, $str, @args);
+        return CliApp::StringUtils->style($style, $str, @args);
     } else {
         return sprintf($str, @args);
     }
@@ -211,11 +211,11 @@ sub doc_version {
     $ret .= $self->style( $mode, 'heading', "Configuration:\n" );
     $ret .= sprintf( "  %s : %s\n",
         $self->style($mode, 'command', $self->name),
-        $self->style($mode, 'config', StringUtils->dump($self->config)));
+        $self->style($mode, 'config', CliApp::StringUtils->dump($self->config)));
     for (@{$self->commands}) {
         $ret .= sprintf( "  %s : %s\n",
             $self->style($mode, 'command', $_->full_name),
-            $self->style($mode, 'config', StringUtils->dump($_->config)));
+            $self->style($mode, 'config', CliApp::StringUtils->dump($_->config)));
     }
     return $ret;
 }

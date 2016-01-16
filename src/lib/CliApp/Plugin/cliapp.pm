@@ -2,8 +2,8 @@ package CliApp::Plugin::cliapp;
 use strict;
 use warnings;
 
-use SimpleLogger;
-use StringUtils;
+use CliApp::SimpleLogger;
+use CliApp::StringUtils;
 
 use parent 'CliApp::Plugin';
 
@@ -35,9 +35,9 @@ sub inject {
         name => 'loglevel',
         synopsis => 'Logging level',
         tag => 'common',
-        default => SimpleLogger->new->loglevel,
+        default => CliApp::SimpleLogger->new->loglevel,
         env => 'LOGLEVEL',
-        enum => SimpleLogger->new->levels,
+        enum => CliApp::SimpleLogger->new->levels,
     );
 
     $app->add_option(
@@ -98,8 +98,8 @@ sub inject {
 
 sub on_configure {
     my ($self, $app) = @_;
-    $app->get_option('loglevel')->{enum} = SimpleLogger->new->levels;
-    SimpleLogger->new->loglevel( $app->config->{loglevel} );
+    $app->get_option('loglevel')->{enum} = CliApp::SimpleLogger->new->levels;
+    CliApp::SimpleLogger->new->loglevel( $app->config->{loglevel} );
 }
 
 1;

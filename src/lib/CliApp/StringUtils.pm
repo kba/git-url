@@ -1,10 +1,10 @@
-package StringUtils;
-use SimpleLogger;
+package CliApp::StringUtils;
+use CliApp::SimpleLogger;
 use Data::Dumper;
 use Term::ANSIColor;
 $Data::Dumper::Terse = 1;
 
-my $log = SimpleLogger->new();
+my $log = CliApp::SimpleLogger->new();
 
 #----------------
 #
