@@ -4,7 +4,6 @@ use warnings;
 
 use SimpleLogger;
 use StringUtils;
-use ObjectUtils;
 
 use parent 'CliApp::Plugin';
 

@@ -28,8 +28,8 @@ sub to_url
 sub repo_create
 {
     my ($cls, $self) = @_;
-    ObjectUtils->require_hash("config", $self->{config}, ['bitbucket_user', 'bitbucket_password']);
-    ObjectUtils->require_hash("location", $self, ['repo_name']);
+    CliApp::ObjectUtils->require_hash("config", $self->{config}, ['bitbucket_user', 'bitbucket_password']);
+    CliApp::ObjectUtils->require_hash("location", $self, ['repo_name']);
     if ($self->{owner} ne $self->{config}->{bitbucket_user}) {
         return HELPER::log_info(
             sprintf(

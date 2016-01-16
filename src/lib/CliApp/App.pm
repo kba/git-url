@@ -1,7 +1,7 @@
 package CliApp::App;
 use strict;
 use warnings;
-use ObjectUtils;
+use CliApp::ObjectUtils;
 use parent 'CliApp::Command';
 
 use CliApp::Plugin::cliapp;
@@ -15,7 +15,7 @@ sub new {
     $args{exec} = sub {};
     $args{default_command} //= 'help';
 
-    ObjectUtils->validate_required_args( $class, [qw(version build_date)],  %args );
+    CliApp::ObjectUtils->validate_required_args( $class, [qw(version build_date)],  %args );
 
     my $self = $class->SUPER::new(%args, parent => undef);
 

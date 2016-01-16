@@ -1,4 +1,4 @@
-package ObjectUtils;
+package CliApp::ObjectUtils;
 use SimpleLogger;
 use Data::Dumper;
 $Data::Dumper::Terse = 1;

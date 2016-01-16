@@ -1,5 +1,5 @@
 package CliApp::Plugin;
-use ObjectUtils;
+use CliApp::ObjectUtils;
 
 use parent 'CliApp::SelfDocumenting';
 
@@ -10,7 +10,7 @@ sub new {
     $name =~ s/^.*://mx;
     $self{name} //= $name;
 
-    ObjectUtils->validate_required_methods($class, 'inject', 'on_configure');
+    CliApp::ObjectUtils->validate_required_methods($class, 'inject', 'on_configure');
 
     return $class->SUPER::new($class, [], %self);
 }

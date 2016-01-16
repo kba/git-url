@@ -3,8 +3,9 @@ use strict;
 use warnings;
 use SimpleLogger;
 use StringUtils;
-use ObjectUtils;
 use List::Util qw(first);
+
+use CliApp::ObjectUtils;
 
 my @_required = qw(name synopsis tag parent);
 our @_modes = qw(ini man cli);
@@ -22,7 +23,7 @@ sub new {
     $_self{description} //= $_self{synopsis};
     # $_self{parent} //= undef;
 
-    ObjectUtils->validate_required_args( $subclass, [@_required, @{ $subclass_required }],  %_self );
+    CliApp::ObjectUtils->validate_required_args( $subclass, [@_required, @{ $subclass_required }],  %_self );
 
     for my $var (keys %_self) {
         no strict 'refs';
