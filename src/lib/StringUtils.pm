@@ -47,8 +47,8 @@ sub dump
         $val =~ s/$nl\s*//mxg;
     }
     $val =~ s/\s*=>\s*/: /gmx;
-    $val =~ s/^[\[\{]//gmx;
-    $val =~ s/[\]\}]$//gmx;
+    $val =~ s/^[\[\{]/$& /gmx;
+    $val =~ s/[\]\}]$/ $&/gmx;
     $val =~ s/'?\s*,\s*'?/', '/gmx;
     $val =~ s/'//gmx;
     $val;
