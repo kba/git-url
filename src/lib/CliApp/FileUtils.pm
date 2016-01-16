@@ -1,4 +1,4 @@
-package FileUtils;
+package CliApp::FileUtils;
 use strict;
 use warnings;
 

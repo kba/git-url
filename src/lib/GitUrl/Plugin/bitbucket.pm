@@ -1,6 +1,6 @@
 package GitUrl::Plugin::bitbucket;
 
-use FileUtils;
+use CliApp::FileUtils;
 use GitUrl::PlatformPlugin;
 
 use parent 'GitUrl::PlatformPlugin';
@@ -58,7 +58,7 @@ curl -i -s -XPOST -u $user:$password -H "Content-Type: application/json" \\
 $api_url \\
 -d '$json'
 EOCMD
-    my $resp = FileUtils->qx($forkCmd);
+    my $resp = CliApp::FileUtils->qx($forkCmd);
     if ([ split("\n", $resp) ]->[0] !~ 201) {
         HELPER::log_die("Failed to create the repo: $resp");
     }
@@ -86,7 +86,7 @@ sub repo_fork
         '-XPOST',
         $api_url
     );
-    my $resp = FileUtils->qx($forkCmd);
+    my $resp = CliApp::FileUtils->qx($forkCmd);
     if ([ split("\n", $resp) ]->[0] !~ 202) {
         HELPER::log_die("Failed to fork the repo: $resp");
     }

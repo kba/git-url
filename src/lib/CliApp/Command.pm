@@ -3,7 +3,7 @@ use strict;
 use warnings;
 use parent 'CliApp::SelfDocumenting';
 
-use FileUtils;
+use CliApp::FileUtils;
 
 use CliApp::Option;
 use CliApp::Argument;
@@ -165,7 +165,7 @@ sub optparse_ini {
         my $ctx = '';
         my $sections = {$ctx=>[]};
         my $cur_section = $sections->{$ctx};
-        for my $line ( grep { !( /^\s*$/mx || /^\s*[#;]/mx ) } @{ FileUtils->slurp($filename) } ) {
+        for my $line ( grep { !( /^\s*$/mx || /^\s*[#;]/mx ) } @{ CliApp::FileUtils->slurp($filename) } ) {
             if ($line =~ m/^\[/mx) {
                 ($ctx = $line) =~ s/^\s*\[(.*)\]/$1/mx;
                 my $rootname = $self->app->name;
