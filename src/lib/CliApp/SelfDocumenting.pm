@@ -8,6 +8,13 @@ use List::Util qw(first);
 
 my @_required = qw(name synopsis tag parent);
 our @_modes = qw(ini man cli);
+my %HELP_VERBOSITY = (
+    ONELINE => 0,
+    USAGE => 1,
+    DESCRIPTION => 2,
+    HEADINGS => 3,
+    FULL => 4
+);
 
 sub new {
     my ($class, $subclass, $subclass_required, %_self) = @_;
@@ -34,15 +41,19 @@ sub new {
     return $self;
 }
 
+sub get_by_name {
+    my ($self, $name) = @_;
+    if ($name =~ '^-') {
+        $name =~ s/^-*//mx;
+        $name =~ s/-/_/gmx;
+        $name =~ s/=.*$//gmx;
+        return $self->get_option($name);
+    }
+    return $self->get_command($name) if ($self->commands && $self->get_command($name));
+    return $self->get_argument($name) if ($self->arguments && $self->get_argument($name));
+}
 
 sub log { return SimpleLogger->new(); }
-
-sub _require_mode {
-    my ($self, $mode) = @_;
-    $self->log->log_die("Mode '%s' not one of %s in %s", $mode, \@_modes, [caller]) unless (
-        $mode && first { $_ eq $mode } @_modes
-    );
-}
 
 sub style {
     my ($self, $mode, $style, $str, @args) = @_;
@@ -51,7 +62,8 @@ sub style {
         $ret =~ s/^.*:://;
         return $ret;
     }
-    $self->_require_mode($mode);
+    @args = map {StringUtils->dump($_)} @args;
+    $self->_require_mode(mode=>$mode);
     if ($mode eq 'cli') {
         return StringUtils->style($style, $str, @args);
     } else {
@@ -88,80 +100,125 @@ sub validate {
 }
 
 #{{{ doc_* Methods for documentation
+sub _require_mode {
+    my ($self, %args) = @_;
+    $self->log->log_die("Mode '%s' not one of %s", $args{mode}, \@_modes) unless (
+        $args{mode} && first { $_ eq $args{mode} } @_modes
+    );
+}
+
 sub doc_name {
-    my ($self, $mode) = @_;
-    $self->_require_mode($mode);
-    return $self->style($mode, $self->style, $self->name);
+    my ($self, %args) = @_;
+    $self->_require_mode(%args);
+    return $self->style($args{mode}, $self->style, $self->name);
 }
 
 sub doc_usage {
-    my ($self, $mode) = @_;
-    $self->_require_mode($mode);
+    my ($self, %args) = @_;
+    $self->_require_mode(%args);
+    my $mode = $args{mode};
     my $ret = '';
-    $ret .= $self->doc_name($mode);
+    $ret .= $self->doc_name(%args);
     if ($self->can('count_options') && $self->count_options) {
-        $ret .= sprintf " [%s]", join(' ', map { $_->doc_name($mode) } @{ $self->options });
+        $ret .= sprintf " [%s]", join(' ', map { $_->doc_name(%args) } @{ $self->options });
     }
     if ($self->can('count_commands') && $self->count_commands) {
-        $ret .= sprintf " %s", join('|', map { $_->doc_name($mode) } @{ $self->commands });
+        $ret .= sprintf " %s", join('|', map { $_->doc_name(%args) } @{ $self->commands });
     }
     if ($self->can('count_arguments') && $self->count_arguments) {
-        $ret .= sprintf " <%s>", join('|', map { $_->doc_name($mode) } @{ $self->arguments });
+        $ret .= sprintf " <%s>", join('|', map { $_->doc_name(%args) } @{ $self->arguments });
     }
     return $ret;
 }
 
-sub doc_oneline {
-    my ($self, $mode, %args) = @_;
-    $self->_require_mode($mode);
-    my $s = '';
-    if ($args{parent_name}) {
-        $s .= $self->doc_parent_name($mode);
-    }
-    $s .= sprintf("%s  %s\n", $self->doc_usage($mode), $self->synopsis);
-
-    return $s;
-}
-
-sub doc_parent_name {
-    my ($self, $mode, %args) = @_;
-    $self->_require_mode($mode);
-    my $parent = $self;
-    my $s = '';
-    while ($parent = $parent->parent) {
-        $s .= sprintf "%s %s", $parent->doc_name($mode), $s;
-    }
-    return $s;
-}
-
 sub doc_help {
-    my ($self, $mode, %args) = @_;
-    $self->_require_mode($mode);
-    my $indent = $args{indent} //= '  ';
-    my $s = $self->doc_oneline($mode, parent => 1);
-    if ($args{error}) {
-        $s.= sprintf("\n[%s] %s\n",
-            $self->style($mode, 'error', 'ERROR'),
-            $args{error});
-        return $s;
-    }
-    $s .= sprintf("\n%s\n\n", $self->description($mode));
-    for my $comp (qw(options commands arguments)) {
-        my $count = sprintf "count_%s", $comp;
-        if ($self->can($count) && $self->$count) {
-            $s .= sprintf("%s\n", $self->style($mode, 'heading', ucfirst($comp)));
-            for (@{$self->$comp}) {
-                my $help = $args{full}
-                ? $_->doc_help($mode, indent => "$indent  ")
-                : $_->doc_oneline($mode);
-                $help =~ s/^/$indent/gmx;
-                $s .= $help;
-            }
+    my ($self, %args) = @_;
+    $self->_require_mode(%args);
+    my ($mode, $verbosity, $indent, $error) = @args{qw(mode verbosity indent error)};
+    $indent //= '  ';
+    $verbosity //= 1;
+
+    my $s = '';
+    unless ($args{skip_parent}) {
+        my $parent = $self;
+        while ($parent = $parent->parent) {
+            $s = sprintf "%s %s", $parent->doc_name(%args), $s;
         }
     }
-    # $s .= "\n";
+    my $cur = ($self->parent && $self->parent->config->{ $self->name })
+        ? $self->style($args{mode}, 'default', "[%s]", $self->parent->config->{ $self->name })
+        : '';
+    $s .= sprintf("%s  %s %s\n", $self->doc_usage(%args), $self->synopsis, $cur);
+
+    if ($error) {
+        my $prompt = $self->style($mode, 'error', 'ERROR') .'>';
+        $s.= sprintf("\n%s\n%s %s\n%s\n",
+            $prompt, $prompt, $error, $prompt);
+        delete $args{error};
+    }
+    if ($verbosity >= $HELP_VERBOSITY{USAGE}) {
+        if ($verbosity >= $HELP_VERBOSITY{DESCRIPTION}) {
+            $s .= sprintf("\n$indent%s\n", $self->description($mode));
+        }
+        my $should_nl = 0;
+        for my $comp (qw(options commands arguments)) {
+            my $count = sprintf "count_%s", $comp;
+            if ($self->can($count) && $self->$count) {
+                $should_nl = 1;
+                $s .= "\n";
+                if ($verbosity >= $HELP_VERBOSITY{HEADINGS}) {
+                    $s .= sprintf("$indent%s\n", $self->style($mode, 'heading', ucfirst($comp)));
+                }
+                for (@{$self->$comp}) {
+                    my $help = $_->doc_help(
+                        %args,
+                        skip_parent => 1,
+                        indent    => "$indent  ",
+                        verbosity => $verbosity - 1
+                    );
+                    $help =~ s/^/$indent/gmx;
+                    $s .= $help;
+                }
+            }
+        }
+        $s .= "\n" if $should_nl;
+    }
     return $s;
 }
+
+sub doc_version {
+    my ($self, %args) = @_;
+    $self->_require_mode(%args);
+    my $mode = $args{mode};
+    my $app = $self->app;
+    my $ret = '';
+    $ret .= $self->doc_usage(%args);
+    $ret .= "\n";
+    $ret .= sprintf( "%s %s\n",
+        $self->style($mode, 'heading', 'Version:'),
+        $self->style($mode, 'value',   $app->version));
+    $ret .= sprintf( "%s %s\n",
+        $self->style($mode, 'heading', 'Build Date:'),
+        $self->style($mode, 'value',   $app->build_date));
+    $ret .= sprintf( "%s %s\n",
+        $self->style($mode, 'heading', 'Plugins:' ),
+        $self->style($mode, 'value', "%s", [ keys %{ $app->plugins } ] )
+    );
+    $ret .= sprintf( "%s %s\n",
+        $self->style($mode, 'heading', 'Configuration file:'),
+        $self->style($mode, 'value',   $app->{default_ini}));
+    $ret .= $self->style( $mode, 'heading', "Configuration:\n" );
+    $ret .= sprintf( "  %s : %s\n",
+        $self->style($mode, 'command', $self->name),
+        $self->style($mode, 'config', StringUtils->dump($self->config)));
+    for (@{$self->commands}) {
+        $ret .= sprintf( "  %s : %s\n",
+            $self->style($mode, 'command', $_->full_name),
+            $self->style($mode, 'config', StringUtils->dump($_->config)));
+    }
+    return $ret;
+}
+
 #}}}
 
 

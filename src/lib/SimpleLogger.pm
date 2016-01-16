@@ -38,9 +38,9 @@ sub new {
 
 sub __stack_trace {
     my $s = shift;
-    my $i = 10;
-    while ($i > 1) {
-        my @stack = caller $i--;
+    my $i = 0;
+    while ($i < 10) {
+        my @stack = caller $i++;
         last unless @stack;
         $s .= sprintf("\n\t in %s +%s", $stack[1], $stack[2]);
     }
@@ -84,18 +84,18 @@ sub should_log_level
 sub should_trace_level
 {
     my ($self, $level) = @_;
-    return $self->{levels}->{$self->loglevel} >= $self->{levels}->{$self->tracelevel};
+    return $self->{levels}->{$self->tracelevel} >= $self->{levels}->{$level};
 }
 
 sub _log
 {
-    my ($self, $levelName, $fmt, @msgs) = @_;
-    return unless $self->should_log_level($levelName);
-    if ($self->should_trace_level) {
+    my ($self, $level_name, $fmt, @msgs) = @_;
+    return unless $self->should_log_level($level_name);
+    if ($self->should_trace_level($level_name)) {
         $fmt = __stack_trace($fmt);
     }
     return sprintf( "[%s] %s\n",
-        colored( uc($levelName), $self->colors->{$levelName} ),
+        colored( uc($level_name), $self->colors->{$level_name} ),
         sprintf( $fmt, map { StringUtils->dump($_) } @msgs ) );
 }
 sub trace { printf shift->_log( "trace", @_ ) }

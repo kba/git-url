@@ -1,7 +1,5 @@
 package GitUrl::Plugin::giturl;
 
-my $log = 'LogUtils';
-
 use parent 'CliApp::Plugin';
 
 sub new {

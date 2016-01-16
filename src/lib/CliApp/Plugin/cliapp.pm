@@ -1,14 +1,14 @@
 package CliApp::Plugin::cliapp;
+use strict;
+use warnings;
 
 use SimpleLogger;
 use StringUtils;
 use ObjectUtils;
 
-my $log = 'LogUtils';
-
 use parent 'CliApp::Plugin';
 
-$options = {
+my $options = {
     mode => {
         name => 'mode',
         synopsis => 'Output mode',
@@ -53,10 +53,11 @@ sub inject {
         name => 'version',
         synopsis => 'Show version information',
         tag => 'core',
-        options => [ $options->{mode}, ],
+        options => [ $options->{mode} ],
         exec => sub {
             my ($this, $argv) = @_;
-            print $this->app->doc_version($this->config->{mode});
+            $self->log->debug("%s", $this->config);
+            print $this->app->doc_version(%{ $this->config });
         }
     );
 
@@ -67,38 +68,25 @@ sub inject {
         options => [
             $options->{mode},
             {
-                name => 'full',
-                synopsis => 'show full help',
+                name => 'verbosity',
+                synopsis => 'Verbosity of help output',
                 tag => 'common',
-                boolean => 1,
-                default => 0,
+                enum => [0..4],
+                default => 1,
             },
         ],
         exec => sub {
             my ($this, $argv) = @_;
-            my @path;
-            while (my $arg = shift @{ $argv }) {
-                if ($arg =~ m/^-/mx) {
-                    $arg =~ s/^-*//mx;
-                    $arg =~ s/-/_/gmx;
-                    push @path, ['get_option', $arg];
-                } else {
-                    push @path, ['get_command', $arg];
-                }
+            my $it = $this->app;
+            for (@{$argv}) {
+                $self->log->debug("%s -> %s", ref $it, $_);
+                $it = $it->get_by_name($_);
             }
-            if (scalar @path) {
-                my $it = $this->app;
-                for (@path) {
-                    ($method, $arg) = @{ $_ };
-                    $it = $it->$method($arg);
-                }
-                return print $it->doc_help( $this->config->{mode}, full => $this->config->{full});
-            }
-            print $this->app->doc_help( $this->config->{mode}, full => $this->config->{full});
+            return print $it->doc_help(%{ $this->config });
         },
         arguments => [
             {
-                name => 'arg',
+                name => 'topic',
                 synopsis => 'cmd, option etc.',
                 tag => 'common',
                 required => 0,

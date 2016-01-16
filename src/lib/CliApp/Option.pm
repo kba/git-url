@@ -26,39 +26,30 @@ sub full_name {
 }
 
 sub doc_name {
-    my ($self, $mode) = @_;
-    $self->_require_mode($mode);
+    my ($self, %args) = @_;
+    $self->_require_mode(%args);
     (my $optname = $self->name) =~ s/_/-/gmx;
-    return $self->style($mode, $self->style, "--%s", $optname);
+    return $self->style($args{mode}, $self->style, "--%s", $optname);
 }
 
 sub doc_usage {
-    my ($self, $mode) = @_;
+    my ($self, %args) = @_;
     # $self->log->debug('HERE: %s', $self->doc_usage($mode));
-    $self->_require_mode($mode);
+    $self->_require_mode(%args);
     my $s = '';
-    $s .= $self->doc_name($mode);
+    $s .= $self->doc_name(%args);
     if ($self->can('enum') && $self->enum) {
         my @vals;
         for my $val (@{ $self->enum }) {
             if ($val eq $self->default) {
-                push @vals, $self->style($mode, 'value-default', $val);
+                push @vals, $self->style($args{mode}, 'value-default', $val);
             } else {
-                push @vals, $self->style($mode, 'value', $val);;
+                push @vals, $self->style($args{mode}, 'value', $val);;
             }
         }
         $s .= sprintf "=<%s>", join('|', @vals);
     }
     return $s;
 }
-
-sub doc_oneline {
-    my ($self, $mode, %args) = @_;
-    my $s = $self->SUPER::doc_oneline($mode, %args);
-    my $default = $self->style($mode, 'default', "  [%s]", $self->parent->config->{ $self->name });
-    $s =~ s/\n/$default\n/;
-    return $s;
-}
-
 
 1;

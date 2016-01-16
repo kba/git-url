@@ -86,9 +86,9 @@ sub _parse_filename
     return;
 }
 
-my $app = GitUrl::App->new();
+# my $app = GitUrl::App->new();
 # use Data::Dumper;
 # print Dumper \@ARGV;
-$app->exec(\@ARGV);
+# $app->exec(\@ARGV);
 
 1;

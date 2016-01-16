@@ -50,53 +50,17 @@ sub configure {
 sub exec {
     my ($self, $argv) = @_;
     $self->configure( $argv );
-    unless (scalar @{ $argv }) {
-        if ($self->{default_command}) {
-            push @{ $argv }, $self->{default_command}
-        } else {
-            return print $self->doc_help( 'cli', error => "Expected command!" );
-        }
+    if ($self->count_commands && ! scalar @{ $argv }) {
+        return print $self->doc_help( mode => 'cli', error => "Expected command!", verbosity => 1 );
     }
     my $cmd_name = shift @{ $argv };
     unless ( $self->get_command($cmd_name) ) {
-        return print $self->doc_help( 'cli',
+        return print $self->doc_help( mode => 'cli',
             error => sprintf( "No such command '%s' in %s", $cmd_name, $self->name ) );
     }
     my $cmd = $self->get_command( $cmd_name );
-    $self->log->trace("%s->exec(%s)", $self->name, $cmd->full_name);
+    $self->log->trace("exec(%s)", $cmd->full_name);
     $cmd->exec( $argv );
-}
-
-sub doc_version {
-    my ($self, $mode) = @_;
-    $self->_require_mode($mode);
-    my $app = $self->app;
-    my $ret = '';
-    $ret .= $self->doc_usage($mode);
-    $ret .= "\n";
-    $ret .= sprintf( "%s %s\n",
-        $self->style($mode, 'heading', 'Version:'),
-        $self->style($mode, 'value',   $app->version));
-    $ret .= sprintf( "%s %s\n",
-        $self->style($mode, 'heading', 'Build Date:'),
-        $self->style($mode, 'value',   $app->build_date));
-    $ret .= sprintf( "%s %s\n",
-        $self->style( $mode, 'heading', 'Plugins:' ),
-        $self->style( $mode, 'value', "%s", StringUtils->dump( [ keys %{ $app->plugins } ] ))
-    );
-    $ret .= sprintf( "%s %s\n",
-        $self->style($mode, 'heading', 'Configuration file:'),
-        $self->style($mode, 'value',   $app->{default_ini}));
-    $ret .= $self->style( $mode, 'heading', "Configuration:\n" );
-    $ret .= sprintf( "  %s : %s\n",
-        $self->style($mode, 'command', $self->name),
-        $self->style($mode, 'config', StringUtils->dump($self->config)));
-    for (@{$self->commands}) {
-        $ret .= sprintf( "  %s : %s\n",
-            $self->style($mode, 'command', $_->full_name),
-            $self->style($mode, 'config', StringUtils->dump($_->config)));
-    }
-    return $ret;
 }
 
 1;

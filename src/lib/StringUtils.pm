@@ -13,7 +13,7 @@ my $log = SimpleLogger->new();
 #----------------
 
 our $styles = {
-    'config'        => 'white bold',
+    'config'        => 'white',
     'option'        => 'magenta bold',
     'value'         => 'cyan',
     'value-default' => 'cyan bold',
@@ -46,6 +46,11 @@ sub dump
     if ($opts{oneline} || $nr_of_nl < 8) {
         $val =~ s/$nl\s*//mxg;
     }
+    $val =~ s/\s*=>\s*/: /gmx;
+    $val =~ s/^[\[\{]//gmx;
+    $val =~ s/[\]\}]$//gmx;
+    $val =~ s/'?\s*,\s*'?/', '/gmx;
+    $val =~ s/'//gmx;
     $val;
 }
 
