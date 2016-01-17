@@ -3,15 +3,15 @@ use strict;
 use warnings;
 use Term::ANSIColor;
 
-my $INSTANCE = undef;
+my $INSTANCE = {};
+my $loglevel = 'debug';
 
-sub new {
+sub get {
     my ($class, %config) = @_;
-
-    return $INSTANCE if defined $INSTANCE;
-
-    $INSTANCE = bless {
-        loglevel => 'debug',
+    my $caller = [caller 2];
+    $caller->[0] =~ s/::/\//gmx;
+    $config{name} //= sprintf("%s:%s",  $caller->[0], $caller->[2]);
+    %config = (
         tracelevel => 'warn',
         levels => {
             'off'   => -1,
@@ -23,6 +23,7 @@ sub new {
             'trace' => 4,
         },
         colors => {
+            'name' => 'yellow',
             'fatal' => 'bold red',
             'error' => 'bold red',
             'warn'  => 'bold yellow',
@@ -31,9 +32,13 @@ sub new {
             'trace' => 'blue',
         },
         %config
-    }, $class;
+    );
 
-    return $INSTANCE;
+    return $INSTANCE->{$config{name}} if exists $INSTANCE->{$config{name}};
+
+    $INSTANCE->{$config{name}} = bless \%config, $class;
+
+    return $INSTANCE->{$config{name}};
 }
 
 sub __stack_trace {
@@ -47,11 +52,16 @@ sub __stack_trace {
     return $s;
 }
 
+sub name {
+    my ($self) = @_;
+    return $self->{name};
+}
+
 sub loglevel
 {
     my ($self) = shift;
-    $self->{loglevel} = $_[0] if @_;
-    return $self->{loglevel};
+    $loglevel = $_[0] if $_[0];
+    return $loglevel;
 }
 
 sub tracelevel
@@ -77,8 +87,8 @@ sub levels
 sub should_log_level
 {
     my ($self, $level) = @_;
-    return if $self->{levels}->{ $self->loglevel } < 0;
-    return $self->{levels}->{$self->loglevel} >= $self->{levels}->{$level};
+    return if $self->{levels}->{ $loglevel } < 0;
+    return $self->{levels}->{$loglevel} >= $self->{levels}->{$level};
 }
 
 sub should_trace_level
@@ -94,8 +104,9 @@ sub _log
     if ($self->should_trace_level($level_name)) {
         $fmt = __stack_trace($fmt);
     }
-    return sprintf( "[%s] %s\n",
+    return sprintf( "[%s] %s: %s\n",
         colored( uc($level_name), $self->colors->{$level_name} ),
+        colored( $self->name, $self->colors->{name} ),
         sprintf( $fmt, map { Clapp::Utils::String->dump($_) } @msgs ) );
 }
 sub trace { printf shift->_log( "trace", @_ ) }

@@ -105,18 +105,28 @@ sub new {
 #}}}
 #{{{ configure
 sub configure {
-    my ($self, $argv, @inis) = @_;
-    $self->log->trace("%s#configure %s, %s", $self->full_name, $argv, \@inis);
+    my ($self, %args) = @_;
+    my $argv = $args{argv};
+    my $inis = $args{inis};
+    my $on_configure = $args{on_configure};
+
+    $self->log->trace("%s#configure %s, %s", $self->full_name, $argv, $inis);
     $argv //= [];
-    $inis[0] //= $self->{default_ini};
+    $inis //= [];
 
     # 1) Defaults
     $self->{config} = $self->optparse_default;
+    $on_configure->();
     # 3) Files
-    push @inis, $self->config->{ini} if ($self->config->{ini});
-    $self->optparse_ini( $_ ) for (@inis);
+    push @{ $inis }, $self->config->{ini} if $self->config->{ini};
+    unless (grep { $_ eq $self->app->{default_ini} } @{ $inis }) {
+        unshift @{ $inis }, $self->app->{default_ini};
+    }
+    $self->optparse_ini( $_ ) for (@{$inis});
+    $on_configure->();
     # 5) ARGV
     $self->optparse_argv($argv);
+    $on_configure->();
 
     # configure sub commands
     my @to_parse = ();
@@ -124,9 +134,9 @@ sub configure {
         # TODO aliases
         if (scalar(@{ $argv }) && $argv->[0] eq $cmd->name ) {
             push @to_parse, shift @{ $argv };
-            $cmd->configure($argv, @inis);
+            $cmd->configure(argv => $argv, inis => $inis, on_configure=>$on_configure);
         } else {
-            $cmd->configure([], @inis);
+            $cmd->configure(argv => [], inis => $inis, on_configure=>$on_configure);
         }
     }
     unshift @{ $argv }, @to_parse;
@@ -137,14 +147,14 @@ sub optparse_default {
     my ($self) = @_;
     my $ret = {};
     for my $opt (@{ $self->options }) {
+        if ($opt->env && $ENV{ $opt->env }) {
+            $self->log->trace("Setting '%s' from ENV '%s' = '%s'", $opt->full_name, $opt->env, $ENV{ $opt->env });
+            $ret->{ $opt->name } = $ENV{ $opt->env };
+        }
         if (ref $opt->default and ref $opt->default eq 'CODE') {
             $ret->{ $opt->name } = $opt->default->( $self );
         } else {
             $ret->{ $opt->name } = $opt->default;
-        }
-        if ($opt->env && $ENV{ $opt->env }) {
-            $self->log->trace("Setting '%s' from ENV '%s' = '%s'", $opt->full_name, $opt->env, $ENV{ $opt->env });
-            $ret->{ $opt->name } = $ENV{ $opt->env };
         }
     }
     # $self->log->trace("DEFAULT: %s", $ret);
@@ -212,7 +222,7 @@ sub optparse_kv {
         $k =~ s/[^a-zA-Z0-9]/_/mxg;
         if ($k =~ m/^no/ && $self->get_option(substr($k, 2))) {
             $k = substr($k, 2);
-            $v = 0;
+            $v = undef;
         }
         else {
             $v //= 1;

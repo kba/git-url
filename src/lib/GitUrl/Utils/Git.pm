@@ -1,27 +1,81 @@
 package GitUrl::Utils::Git;
-use Clapp::Utils::SimpleLogger;
-use Clapp::Utils::File;
+use strict;
+use warnings;
+use parent 'Clapp::Utils';
+use File::Basename qw(dirname);
 
-use parent 'GitUrl::Utils';
-
-my $log = Clapp::Utils::SimpleLogger->new;
-my $file_utils = Clapp::Utils::File;
-
-sub git_dir_for_filename
+sub git_basedir
 {
-    my ($class, $path) = @_;
+    my ($self, $path) = @_;
+    $self->log->trace("git_dir_for_filename $path");
+
     if (!-d $path) {
-        $file_utils->chdir(dirname($path));
+        $self->utils->{file}->chdir(dirname($path));
     }
     else {
-        $file_utils->chdir($path);
+        $self->utils->{file}->chdir($path);
     }
-    my $dir = $file_utils->qx('git rev-parse --show-toplevel 2>&1');
+    my $dir = $self->utils->{file}->qx('git rev-parse --show-toplevel 2>/dev/null');
     chomp($dir);
     if ($? > 0) {
-        $log->error($dir);
+        $self->log->trace("git rev-parse failed");
     }
     return $dir;
+}
+
+sub git_config
+{
+    my ($self, $path) = @_;
+    $path = sprintf("%s/.git/config", $self->git_basedir($path));
+    return $self->_parse_git_config(@{$self->utils->{file}->slurp($path)});
+}
+
+sub git_current_branch
+{
+    my ($self, $path) = @_;
+    $self->utils->{file}->chdir($self->git_basedir($path));
+    return $self->utils->{file}->qx("git rev-parse --abbrev-ref HEAD");
+}
+
+sub git_remote_for_branch
+{
+    my ($self, $path, $branch) = @_;
+    $self->utils->{file}->chdir($self->git_basedir($path));
+    $branch //= $self->git_current_branch($path);
+    return $self->utils->{file}->qx("git config branch.$branch.remote");
+}
+
+sub git_remote_url
+{
+    my ($self, $path, $remote) = @_;
+    $self->utils->{file}->chdir($self->git_basedir($path));
+    $remote //= $self->git_remote_for_branch($path);
+    return $self->utils->{file}->qx("git config remote.$remote.url");
+}
+
+sub _parse_git_config
+{
+    my ($self, @lines) = @_;
+    my $ret = {};
+    my $cur = undef;
+    for (@lines) {
+        s/^\s*//gmx;
+        s/\s*$//gmx;
+        if (/\s*\[/) {
+            my ($section) = m/\[\s*(.*?)\s*\]/gmx;
+            if ($section =~ m/"/gmx) {
+                my ($subsection, $name) = m/\[(.*?)\s*"(.*?)"\]/gmx;
+                $ret->{$subsection} //= {};
+                $cur = $ret->{$subsection}->{$name} = {};
+            } else {
+                $cur = $ret->{$section} = {};
+            }
+        } else {
+            my ($k, $v) = split(/\s*=\s*/mx);
+            $cur->{$k} = $v;
+        }
+    }
+    return $ret;
 }
 
 1;

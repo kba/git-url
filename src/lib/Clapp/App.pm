@@ -4,13 +4,13 @@ use warnings;
 use Clapp::Utils::Object;
 use parent 'Clapp::Command';
 
-use Clapp::Plugin::cliapp;
+use Clapp::Plugin::core;
 
 sub new {
     my ($class, %args) = @_;
 
     $args{plugins} //= [];
-    unshift @{ $args{plugins} }, qw(Clapp::Plugin::cliapp);
+    unshift @{ $args{plugins} }, qw(Clapp::Plugin::core);
     my @plugins = @{ delete $args{plugins} };
     $args{plugins} = {};
 
@@ -37,9 +37,10 @@ sub new {
         $self->plugins->{$plugin_name}->inject($self);
     }
     for my $util (@utils) {
-        my $util_name = ref($util) ? ref($util) : $util;
+        my $util_name = $util;
         $util_name =~ s/^.*://mx;
         $util_name = lc $util_name;
+        $self->log->trace("Util: %s -> %s", $util_name, $util);
         $self->utils->{$util_name} = $util->new(app => $self);
     }
 
@@ -51,20 +52,28 @@ sub new {
 }
 
 sub configure {
-    my ($self, $argv, @inis) = @_;
+    my ($self, $argv, $inis) = @_;
 
-    $self->SUPER::configure($argv, @inis);
+    $self->SUPER::configure(
+        argv => $argv,
+        inis => $inis,
+        on_configure => sub {
+            for my $plugin (values %{ $self->plugins }) {
+                $plugin->on_configure($self);
+            }
+        });
 
-    for my $plugin (values %{ $self->plugins }) {
-        $plugin->on_configure($self) ;
-    }
 }
 
 sub exec {
     my ($self, $argv) = @_;
-    $self->configure( $argv );
+    $self->configure( $argv, [] );
     if ($self->count_commands && ! scalar @{ $argv }) {
-        $self->exit_error("Expected command!");
+        print $self->doc_help(
+            mode => 'cli',
+            verbosity => 1
+        );
+        exit 0;
     }
     my $cmd_name = shift @{ $argv };
     unless ( $self->get_command($cmd_name) ) {

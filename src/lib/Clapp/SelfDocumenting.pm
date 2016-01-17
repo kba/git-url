@@ -54,7 +54,7 @@ sub get_by_name {
     return $self->get_argument($name) if ($self->arguments && $self->get_argument($name));
 }
 
-sub log { return Clapp::Utils::SimpleLogger->new(); }
+sub log { return Clapp::Utils::SimpleLogger->get; }
 
 sub style {
     my ($self, $mode, $style, $str, @args) = @_;
@@ -121,7 +121,11 @@ sub doc_usage {
     my $ret = '';
     $ret .= $self->doc_name(%args);
     if ($self->can('count_options') && $self->count_options) {
-        $ret .= sprintf " [%s]", join(' ', map { $_->doc_name(%args) } @{ $self->options });
+        if ($args{verbosity} && $args{verbosity} == 0) {
+            $ret .= sprintf(" [%s]", join(' ', map { $_->doc_name(%args) } sort { $a->name cmp $b->name } @{ $self->options }));
+        } else {
+            $ret .= $self->style($mode, 'option', ' <options>');
+        }
     }
     if ($self->can('count_commands') && $self->count_commands) {
         $ret .= sprintf " %s", join('|', map { $_->doc_name(%args) } @{ $self->commands });
@@ -134,10 +138,13 @@ sub doc_usage {
 
 sub exit_error {
     my ($self, $msg, @args) = @_;
+    use Data::Dumper;
+    $Data::Dumper::Terse = 1;
+    $Data::Dumper::Indent = 1;
     print $self->doc_help(
         mode => 'cli',
         verbosity => 1,
-        error => sprintf($msg, @args),
+        error => sprintf($msg, Dumper @args),
     );
     exit 1;
 }
@@ -148,6 +155,7 @@ sub doc_help {
     my ($mode, $verbosity, $indent, $error) = @args{qw(mode verbosity indent error)};
     $indent //= '  ';
     $verbosity //= 1;
+    $args{tag} //= 'common';
 
     my $s = '';
     unless ($args{skip_parent}) {
@@ -156,9 +164,11 @@ sub doc_help {
             $s = sprintf "%s %s", $parent->doc_name(%args), $s;
         }
     }
-    my $cur = ($self->parent && $self->parent->config->{ $self->name })
-        ? $self->style($args{mode}, 'default', "[%s]", $self->parent->config->{ $self->name })
-        : '';
+    my $cur = '';
+    if ($self->parent && exists $self->parent->config->{ $self->name }) {
+        my $val = $self->app->utils->{string}->human_readable($self->parent->config->{ $self->name });
+        $cur = $self->style($args{mode}, 'default', "%s", $val);
+    }
     $s .= sprintf("%s  %s %s\n", $self->doc_usage(%args), $self->synopsis, $cur);
 
     if ($error) {
@@ -177,10 +187,17 @@ sub doc_help {
             if ($self->can($count) && $self->$count) {
                 $should_nl = 1;
                 $s .= "\n";
-                if ($verbosity >= $HELP_VERBOSITY{HEADINGS}) {
-                    $s .= sprintf("$indent%s\n", $self->style($mode, 'heading', ucfirst($comp)));
-                }
-                for (@{$self->$comp}) {
+                my $cur_tag = '';
+                for (sort { $a->tag cmp $b->tag || $a->name cmp $b->name } @{$self->$comp}) {
+                    if ($args{group}) {
+                        if ($_->tag ne $cur_tag) {
+                            $cur_tag = $_->tag;
+                            $s .= sprintf("$indent%s [%s]\n",
+                                $self->style($mode, 'heading', "%s %s", ucfirst($comp)),
+                                $self->style($mode, 'default', $cur_tag),
+                            );
+                        }
+                    }
                     my $help = $_->doc_help(
                         %args,
                         skip_parent => 1,

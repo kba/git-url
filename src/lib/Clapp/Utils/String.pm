@@ -6,7 +6,7 @@ $Data::Dumper::Terse = 1;
 
 use parent 'Clapp::Utils';
 
-my $log = Clapp::Utils::SimpleLogger->new();
+my $log = Clapp::Utils::SimpleLogger->get();
 
 #----------------
 #
@@ -45,14 +45,15 @@ sub dump
     $val = Dumper($val);
     my $nl = "[\n\r]";
     my $nr_of_nl = () = $val =~ m/$nl\s*/mxg;
-    if ($opts{oneline} || $nr_of_nl < 8) {
+    $opts{maxlines} //= 10;
+    if ($opts{oneline} || $nr_of_nl < $opts{maxlines}) {
         $val =~ s/$nl\s*//mxg;
     }
-    $val =~ s/\s*=>\s*/: /gmx;
-    $val =~ s/^[\[\{]/$& /gmx;
-    $val =~ s/[\]\}]$/ $&/gmx;
-    $val =~ s/'?\s*,\s*'?/', '/gmx;
-    $val =~ s/'//gmx;
+    # $val =~ s/\s*=>\s*/: /gmx;
+    # $val =~ s/^[\[\{]/$& /gmx;
+    # $val =~ s/[\]\}]$/ $&/gmx;
+    $val =~ s/'?\s*,([^\s'])'?/', $1'/gmx;
+    # $val =~ s/'//gmx;
     $val;
 }
 
@@ -61,8 +62,8 @@ sub human_readable
     my ($class, $val) = @_;
     return !defined $val
       ? 'NONE'
-      : ref $val ? ref $val eq 'ARRAY' ? sprintf("%s", join(",", @{$val}))
-          : ref $val eq 'HASH' ? sprintf("%s", join(',', map {join ':', $_, $val->{$_}} sort keys %{$val}))
+      : ref $val ? ref $val eq 'ARRAY' ? sprintf("%s", join(",", map {"\"$_\""} @{$val}))
+          : ref $val eq 'HASH' ? join(',', map {join ':',  map {"\"$_\""} ($_, $val->{$_})} sort keys %{$val})
             : $log->log_die("Unsupported ref type '%s'", ref $val)
       : $val =~ /^1$/mx ? 'true'
       : $val =~ /^0$/mx ? 'false'
@@ -78,6 +79,5 @@ sub style
     }
     return colored(sprintf($str, @args), $styles->{$style});
 }
-
 
 1;

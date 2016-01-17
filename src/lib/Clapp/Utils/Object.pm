@@ -2,7 +2,7 @@ package Clapp::Utils::Object;
 use Clapp::Utils::SimpleLogger;
 use Data::Dumper;
 $Data::Dumper::Terse = 1;
-my $log = Clapp::Utils::SimpleLogger->new();
+my $log = Clapp::Utils::SimpleLogger->get();
 
 #-------------
 #

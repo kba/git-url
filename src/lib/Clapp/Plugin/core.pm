@@ -1,4 +1,4 @@
-package Clapp::Plugin::cliapp;
+package Clapp::Plugin::core;
 use strict;
 use warnings;
 
@@ -11,7 +11,7 @@ my $options = {
     mode => {
         name => 'mode',
         synopsis => 'Output mode',
-        tag => 'core',
+        tag => 'common',
         enum => [@Clapp::SelfDocumenting::_modes],
         default => 'cli',
     },
@@ -35,9 +35,9 @@ sub inject {
         name => 'log',
         synopsis => 'Logging level',
         tag => 'common',
-        default => Clapp::Utils::SimpleLogger->new->loglevel,
+        default => $ENV{LOGLEVEL} || Clapp::Utils::SimpleLogger->get->loglevel,
         env => 'LOGLEVEL',
-        enum => Clapp::Utils::SimpleLogger->new->levels,
+        enum => Clapp::Utils::SimpleLogger->get->levels,
     );
 
     $app->add_option(
@@ -47,6 +47,15 @@ sub inject {
         default => sub { return $_[0]->app->{default_ini}; },
         env => 'foo',
     );
+
+    $app->add_option(
+        name => 'dry_run',
+        synopsis => "Print commands instead of executing them",
+        tag => 'common',
+        boolean => 1,
+        default => 0,
+    );
+
 
     $app->add_command(
         name => 'version',
@@ -66,6 +75,13 @@ sub inject {
         tag => 'core',
         options => [
             $options->{mode},
+            {
+                name => 'group',
+                synopsis => 'Group options/commands',
+                tag => 'common',
+                boolean => 1,
+                default => 0,
+            },
             {
                 name => 'verbosity',
                 synopsis => 'Verbosity of help output',
@@ -98,8 +114,15 @@ sub inject {
 
 sub on_configure {
     my ($self, $app) = @_;
-    $app->get_option('log')->{enum} = Clapp::Utils::SimpleLogger->new->levels;
-    Clapp::Utils::SimpleLogger->new->loglevel( $app->config->{log} );
+    # logging
+    $app->get_option('log')->{enum} = Clapp::Utils::SimpleLogger->get->levels;
+    Clapp::Utils::SimpleLogger->get->loglevel( $app->config->{log} );
+    # dry-run
+    if ($app->config->{dry_run}) {
+        $ENV{DRY_RUN} = 1;
+    } else {
+        delete $ENV{DRY_RUN};
+    }
 }
 
 1;

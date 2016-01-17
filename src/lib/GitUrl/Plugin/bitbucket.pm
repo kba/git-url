@@ -8,13 +8,16 @@ sub new {
     my ($class, %args) = @_;
 
     return $class->SUPER::new(
-        synopsis => 'Bitbucket integration',
-        tag => 'bitbucket',
+        synopsis     => 'Bitbucket integration',
+        hosts        => ['bitbucket.org'],
+        host_aliases => { 'bb:' => 'bitbucket.org' },
+        tag          => 'bitbucket',
         %args,
     );
+
 }
 
-sub to_url
+sub browse_url
 {
     my ($cls, $self, $path) = @_;
     if (index($path, '/') == -1) {
