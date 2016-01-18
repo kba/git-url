@@ -31,6 +31,7 @@ sub new {
         next if $var eq 'exec';
         my $method = sprintf "%s::%s", $subclass, $var;
         next if __PACKAGE__->can($method);
+        next if $var eq 'config';
         *{$method} = sub {
             # $self->log->trace("%s->{%s} = %s", $_[0], $var, $_[0]->{$var});
             return $_[0]->{$var};

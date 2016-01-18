@@ -94,6 +94,7 @@ sub clone_url_ssh
 
 sub clone_url_http
 {
+    my ($self, $loc) = @_;
     return sprintf("https://%s/%s/%s",
         $loc->{host},
         $loc->{owner},
