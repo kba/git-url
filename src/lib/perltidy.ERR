@@ -1,0 +1,6 @@
+
+11: $plugin->clone_repo($self);
+    ^                          
+found Scalar where operator expected
+
+Missing ';' above?

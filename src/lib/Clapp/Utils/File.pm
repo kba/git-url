@@ -5,7 +5,7 @@ use warnings;
 use parent 'Clapp::Utils';
 
 use Clapp::Utils::SimpleLogger;
-my $log = Clapp::Utils::SimpleLogger->get;
+my $log = Clapp::Utils::SimpleLogger->get();
 
 #---------
 #
@@ -17,23 +17,31 @@ sub chdir
 {
     my ($self, $dir) = @_;
     $self->log->trace("cd $dir");
+    return printf "cd %s\n", $dir if $self->app->config->{dry_run};
     return chdir $dir;
 }
 
 sub system
 {
-    my ($self, $cmd) = @_;
+    my ($self, $cmd, @args) = @_;
+    $cmd = sprintf($cmd, @args);
     $self->log->trace("$cmd");
-    if ($ENV{DRY_RUN}) {
-        return print $cmd;
+    return printf "%s\n", $cmd if $self->app->config->{dry_run};
+    if ($self->app->config->{interactive}) {
+        return unless $self->log->prompt_yn("Execute '$cmd'?");
     }
     return system($cmd);
 }
 
 sub qx
 {
-    my ($self, $cmd) = @_;
+    my ($self, $cmd, @args) = @_;
+    $cmd = sprintf($cmd, @args);
     $self->log->trace("$cmd");
+    return printf "%s\n", $cmd if $self->app->config->{dry_run};
+    if ($self->app->config->{interactive}) {
+        return unless $self->log->prompt_yn("Execute '$cmd'?");
+    }
     my $out = qx($cmd);
     chomp $out;
     return $out;

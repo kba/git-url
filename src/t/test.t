@@ -1,6 +1,6 @@
-use Cwd qw(realpath);
 use strict;
 use warnings;
+use Cwd qw(realpath);
 use File::Basename qw(dirname);
 my $SCRIPT_DIR;
 BEGIN { $SCRIPT_DIR = realpath(dirname(realpath $0)) };

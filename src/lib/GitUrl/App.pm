@@ -31,7 +31,7 @@ sub new {
         ],
         plugins => [
             'GitUrl::Plugin::giturl',
-            'GitUrl::Plugin::bitbucket',
+            # 'GitUrl::Plugin::bitbucket',
             'GitUrl::Plugin::github',
         ],
         %self,
@@ -45,11 +45,16 @@ sub new {
 sub get_plugin_by_host
 {
     my ($self, $needle) = @_;
-    for my $plugin (values %{$self->plugins}) {
-        next unless $plugin->isa('GitUrl::PlatformPlugin');
+    for my $plugin (@{ $self->platform_plugins }) {
         next unless grep {$_ eq $needle} @{$plugin->{hosts}};
         return $plugin;
     }
+}
+sub platform_plugins
+{
+    my ($self, $needle) = @_;
+    my $seen = {};
+    return [ map {$self->plugins->{$_}} grep {$self->plugins->{$_}->isa('GitUrl::PlatformPlugin')} keys %{$self->plugins}];
 }
 
 1;

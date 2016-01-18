@@ -100,6 +100,19 @@ sub validate {
     return;
 }
 
+sub require_config {
+    my ($self, $obj, @keys) = @_;
+    my $die_flag;
+    for my $key (@keys) {
+        unless (defined $obj->config->{$key}) {
+            $self->log->error("This feature requires the '$key' config setting to be set.");
+        }
+    }
+    if ($die_flag) {
+        $self->exit_error("Unmet config requirements.");
+    }
+}
+
 #{{{ doc_* Methods for documentation
 sub _require_mode {
     my ($self, %args) = @_;
@@ -141,9 +154,9 @@ sub exit_error {
     use Data::Dumper;
     $Data::Dumper::Terse = 1;
     $Data::Dumper::Indent = 1;
-    print $self->doc_help(
+    print $self->app->doc_help(
         mode => 'cli',
-        verbosity => 1,
+        verbosity => 0,
         error => sprintf($msg, Dumper @args),
     );
     exit 1;

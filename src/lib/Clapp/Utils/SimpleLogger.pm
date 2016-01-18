@@ -9,6 +9,9 @@ my $loglevel = 'debug';
 sub get {
     my ($class, %config) = @_;
     my $caller = [caller 2];
+    unless ($caller->[0]) {
+        $caller = [caller 0];
+    }
     $caller->[0] =~ s/::/\//gmx;
     $config{name} //= sprintf("%s:%s",  $caller->[0], $caller->[2]);
     %config = (
@@ -115,5 +118,17 @@ sub info  { printf shift->_log( "info",  @_ ) }
 sub warn  { printf shift->_log( "warn",  @_ ) }
 sub error { printf shift->_log( "error", @_ ) }
 sub log_die { die  shift->_log( "fatal", @_ ); }
+sub prompt {
+  my ($self, $query) = @_; # take a prompt string as argument
+  local $| = 1; # activate autoflush to immediately show the prompt
+  print $query;
+  chomp(my $answer = <STDIN>);
+  return $answer;
+}
+sub prompt_yn {
+  my ($self, $query) = @_;
+  my $answer = $self->prompt("$query (Y/N): ");
+  return lc(substr($answer,0,1)) eq 'y';
+}
 
 1;

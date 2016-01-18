@@ -1,4 +1,6 @@
 package Clapp::Utils::String;
+use strict;
+use warnings;
 use Clapp::Utils::SimpleLogger;
 use Data::Dumper;
 use Term::ANSIColor;
@@ -78,6 +80,27 @@ sub style
         $log->log_die("Unknown style '$style' at " . join(' ', caller));
     }
     return colored(sprintf($str, @args), $styles->{$style});
+}
+
+sub fuzzy_match
+{
+    my ($class, $needle, @strings) = @_;
+    @strings = @{ $strings[0] } if (ref $strings[0]);
+    $needle =~ s/(.)/$1.*?/gmx;
+    my @matches =  grep { m/^$needle$/gmx } @strings ;
+    return undef if scalar @matches == 0;
+    return $matches[0] if scalar @matches == 1;
+    return \@matches;
+}
+
+sub fill_template
+{
+    my ($self, $s, $tpl) = @_;
+    for my $k (sort {length($a) <=> length($b)} keys %{ $tpl }) {
+        my $v = $tpl->{$k};
+        $s =~ s/%$k/$v/gmx;
+    }
+    return $s;
 }
 
 1;

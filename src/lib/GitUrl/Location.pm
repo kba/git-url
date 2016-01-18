@@ -10,13 +10,14 @@ $Data::Dumper::Indent = 1;
 use File::Spec;
 use File::Basename;
 
-my @_required = qw(repo_name path_within_repo branch);
+my @_required = qw(repo_name);
 
 sub new {
     my ($class, %args) = @_;
 
     Clapp::Utils::Object->validate_required_args( $class, [@_required], 
         branch => 'master',
+        path_within_repo => '.',
         %args
     );
 
@@ -37,7 +38,6 @@ sub parse {
     my ($class, $location) = @_;
     $class->log->log_die("Repo->parse is a class method") if (ref $class);
     $class->log->log_die("Must pass location to Repo->parse") unless ($location);
-    $location = realpath $location  unless ($location);
 
     if ($location =~ /^(https?:|.+@[^\/]+:)/mx) {
         return $class->_parse_url($location);
@@ -103,10 +103,10 @@ sub _parse_shortcut {
     my $app_config = $class->app->config;
     # warn Dumper $class->app->config;
     for (keys %{ $app_config->{host_aliases} }) {
-        if ($loc =~ m/^$_/mx) {
+        if ($loc =~ m,^$_[/:],mx) {
             $loc = sprintf("%s/%s",
                 $app_config->{host_aliases}->{ $_ },
-                substr($loc, length($_))
+                substr($loc, length($_) + 1)
             );
             last;
         }
@@ -116,28 +116,63 @@ sub _parse_shortcut {
     my @segments = split(m,/,mx, $loc, 3);
     if (scalar @segments == 3) {
         @self{'host', 'owner', 'repo_name'} = @segments;
-    } elsif (scalar @segments == 2) {
-        @self{'host', 'owner', 'repo_name'} = ($app_config->{clone_from}, @segments);
+    # } elsif (scalar @segments == 2) {
+        # @self{'host', 'owner', 'repo_name'} = ($app_config->{clone_from}, @segments);
+    # } else {
+        # @self{'host', 'repo_name'} = ($app_config->{clone_from}, @segments);
+        # my $plugin = $class->app->get_plugin_by_host( $self{host} );
+        # if ($plugin) {
+            # $self{owner} = $app_config->{ $plugin->name . '_owner' };
+        # }
     } else {
-        @self{'host', 'repo_name'} = ($app_config->{clone_from}, @segments);
-        my $plugin = $class->app->get_plugin_by_host( $self{host} );
-        if ($plugin) {
-            $self{owner} = $app_config->{ $plugin->name . '_owner' };
-        }
+        ($self{repo_name}) = @segments;
     }
-    return GitUrl::Location->new(%self);
+    my $self = GitUrl::Location->new(%self);
+    if ($self->path_to_repo) {
+        return GitUrl::Location->parse($self->path_to_repo);
+    }
+    return $self;
+}
+
+sub get_shortcut {
+    my ($self) = @_;
+    if ($self->{host}) {
+        my $plugin = $self->get_plugin();
+        my $host = $self->{host};
+        if ($plugin) {
+            $host = $plugin->alias_for_host($self->{host});
+        }
+        return sprintf("%s/%s/%s", $host, $self->{owner}, $self->{repo_name});
+    }
+    return sprintf("%s/%s", $self->{owner}, $self->{repo_name});
+}
+
+sub get_plugin {
+    my ($self, %args) = @_;
+    unless ($self->{host}) {
+        if ($args{exit}) {
+            $self->app->exit_error("Not on a remote tracking branch: %s", $self);
+        }
+        return;
+    }
+    my $plugin = $self->app->get_plugin_by_host( $self->{host} );
+    unless ($plugin) {
+        if ($args{exit}) {
+            $self->app->exit_error("Not supported by any plugin: %s", $self->{host});
+        }
+        return;
+    }
+    return $plugin;
 }
 
 sub browse_url {
     my ($self) = @_;
-    unless ($self->{host}) {
-        $self->app->exit_error("Not on a remote tracking branch: %s", $self);
-    }
-    my $plugin = $self->app->get_plugin_by_host( $self->{host} );
-    unless ($plugin) {
-        $self->app->exit_error("Not supported by any plugin: %s", $self->{host});
-    }
-    return $plugin->browse_url($self);
+    return $self->get_plugin(exit => 1)->browse_url($self);
+}
+
+sub clone_url {
+    my ($self) = @_;
+    return $self->get_plugin(exit => 1)->clone_url($self);
 }
 
 sub path_to_repo {
@@ -145,14 +180,43 @@ sub path_to_repo {
     if ($self->{path_to_repo} && -d $self->{path_to_repo}) {
         return $self->{path_to_repo};
     }
-    for my $basedir (@{ $self->app->config->{repo_dirs} }) {
-        for my $subdir (@{ $self->app->config->{repo_dir_patterns} }) {
-            $subdir = "$basedir/$subdir";
-            for my $k (sort {length($a) <=> length($b)} keys %{ $self }) {
-                my $v = $self->{$k};
-                $subdir =~ s/%$k/$v/gmx;
+    my @basedirs = @{ $self->app->config->{repo_dirs} };
+    my @patterns = @{ $self->app->config->{repo_dir_patterns} };
+    my @additional_basedirs;
+    if ($self->app->config->{fuzzy} > 0) {
+        for my $basedir (@basedirs) {
+            for my $pat (@patterns) {
+                for my $plugin (@{ $self->app->platform_plugins }) {
+                    for my $host (@{ $plugin->get_hosts }) {
+                        for my $org (@{ $plugin->get_orgs }) {
+                            my $subdir = $self->app->utils->{string}->fill_template("$basedir/$pat", {
+                                host => $host,
+                                owner => $org,
+                            });
+                            next if $subdir =~ m/%/mx;
+                            push @additional_basedirs, $subdir;
+                        }
+                    }
+                }
             }
-            return $subdir if (-d $subdir);
+        }
+    }
+    for my $basedir (@basedirs) {
+        for (@patterns) {
+            my $subdir = $self->app->utils->{string}->fill_template("$basedir/$_", $self);
+            next if $subdir =~ m/%/mx;
+            if (-d $subdir) {
+                $self->{path_to_repo} = $subdir;
+                return $subdir;
+            }
+        }
+        for (@additional_basedirs) {
+            my $subdir = $self->app->utils->{string}->fill_template($_, $self);
+            next if $subdir =~ m/%/mx;
+            if (-d $subdir) {
+                $self->{path_to_repo} = $subdir;
+                return $subdir;
+            }
         }
     }
 }
@@ -166,7 +230,21 @@ sub full_path {
 sub clone {
     my ($self) = @_;
     if ($self->path_to_repo) {
-        $self->log->info("Already cloned locally: %s", $self->path_to_repo);
+        $self->log->info( "Repo already cloned: '%s'.", $self->path_to_repo );
+        if (!$self->app->config->{force}) {
+            return;
+        }
+    }
+    my $app = $self->app;
+    my $plugin = $self->get_plugin(exit=>0) || $app->plugins->{ $app->config->{default_platform} };
+    $plugin->clone_repo($self);
+    if (! $self->path_to_repo && $app->config->{create}) {
+        $self->log->info("Creating %s", $self->get_shortcut);
+        $plugin->create_repo($self);
+        $plugin->clone_repo($self);
+    }
+    if (! $self->path_to_repo) {
+        $self->app->exit_error("Failed to clone or create.");
     }
 }
 

@@ -1,4 +1,5 @@
 package Clapp::Utils;
+use Clapp::Utils::Object;
 
 sub new {
     my ($class, %args) = @_;

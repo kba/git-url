@@ -56,6 +56,13 @@ sub inject {
         default => 0,
     );
 
+    $app->add_option(
+        name => 'interactive',
+        synopsis => 'Interactive mode',
+        tag => 'common',
+        boolean => 1,
+        default => 0,
+    );
 
     $app->add_command(
         name => 'version',
@@ -118,11 +125,11 @@ sub on_configure {
     $app->get_option('log')->{enum} = Clapp::Utils::SimpleLogger->get->levels;
     Clapp::Utils::SimpleLogger->get->loglevel( $app->config->{log} );
     # dry-run
-    if ($app->config->{dry_run}) {
-        $ENV{DRY_RUN} = 1;
-    } else {
-        delete $ENV{DRY_RUN};
-    }
+    $ENV{DRY_RUN} = $app->config->{dry_run};
+    delete $ENV{DRY_RUN} unless $ENV{DRY_RUN};
+    # interactive
+    $ENV{INTERACTIVE} = $app->config->{interactive};
+    delete $ENV{INTERACTIVE} unless $ENV{INTERACTIVE};
 }
 
 1;

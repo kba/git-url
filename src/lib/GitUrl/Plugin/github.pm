@@ -5,17 +5,61 @@ use GitUrl::PlatformPlugin;
 
 use parent 'GitUrl::PlatformPlugin';
 
+sub name { return 'github'; };
+sub default_api { return 'https://api.github.com'; }
+
 sub new {
     my ($class, %args) = @_;
 
     return $class->SUPER::new(
         synopsis     => 'Github integration',
         hosts        => ['github.com'],
-        host_aliases => { 'gh:' => 'github.com' },
-        tag          => 'github',
+        host_aliases => { 'gh' => 'github.com' },
         %args,
     );
+}
 
+sub clone_repo
+{
+    my ($self, $loc, $dir) = @_;
+    $loc->{host} //= 'github.com';
+    $loc->{owner} //= $self->app->config->{github_user};
+    return $self->SUPER::clone_repo($loc, $dir);
+}
+
+sub create_repo
+{
+    my ($self, $loc) = @_;
+    $self->require_config($self->app, 'github_user', 'github_token');
+    if (! grep { $_ eq $loc->{owner} } @{ $self->get_orgs } ) {
+        $self->exit_error( "Can not create repo for org '%s'. Allowed: %s",
+            $loc->{owner}, $self->get_orgs );
+    }
+    my $fmt = qq(
+        curl -i -s -XPOST -u '%s:%s'
+        -H "Content-Type: application/json"
+        -H "Accept: application/vnd.github.v3+json"
+        '%s'
+        -d '{
+            "name": "%s",
+            "private": %s
+        }'
+    );
+    $fmt =~ s/\n\s*/ /gmx;
+    my $cmd = sprintf($fmt,
+        $self->get_user,
+        $self->get_token,
+        # sprintf("%s/orgs/%s/repos", $self->get_api, $loc->{owner}),
+        sprintf("%s/user/repos", $self->get_api),
+        $loc->{repo_name},
+        $self->app->config->{private} ? 'true' : 'false'
+    );
+    $self->log->info($cmd);
+    my $resp = $self->app->utils->{file}->qx($cmd);
+    if ([ split("\n", $resp) ]->[0] !~ 201) {
+        $self->exit_error("Failed to create the repo: $resp");
+    }
+    return;
 }
 
 sub browse_url
