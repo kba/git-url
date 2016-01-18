@@ -39,6 +39,7 @@ sub alias_for_host {
         return $_ if $match eq $host;
     }
 }
+
 sub inject {
     my ($self, $app) = @_;
 
@@ -82,34 +83,41 @@ sub clone_dir {
     return $self->app->utils->{string}->fill_template("$basedir/$pattern", $loc);
 }
 
-sub clone_url
+sub clone_url_ssh
 {
     my ($self, $loc) = @_;
-    if ($self->app->config->{prefer_ssh} && grep {$_ eq $loc->{owner} } @{ $self->get_orgs }) {
-        return sprintf("git@%s:%s/%s",
-            $loc->{host},
-            $loc->{owner},
-            $loc->{repo_name});
-    }
+    return sprintf("git@%s:%s/%s",
+        $loc->{host},
+        $loc->{owner},
+        $loc->{repo_name});
+}
+
+sub clone_url_http
+{
     return sprintf("https://%s/%s/%s",
         $loc->{host},
         $loc->{owner},
         $loc->{repo_name});
 }
 
+sub clone_url
+{
+    my ($self, $loc) = @_;
+    if ($self->app->config->{prefer_ssh} && grep {$_ eq $loc->{owner} } @{ $self->get_orgs }) {
+        $self->clone_url_ssh( $loc );
+    }
+    $self->clone_url_http( $loc );
+}
+
 sub clone_repo
 {
     my ($self, $loc, $dir) = @_;
-    $self->app->utils->{file}->qx('git clone %s %s',
-        $self->clone_url($loc),
-        $self->clone_dir($loc)
-    );
+    $self->app->utils->{file}->qx('git clone %s %s', $self->clone_url($loc), $self->clone_dir($loc));
 }
 
 sub on_configure {
     my ($self, $app) = @_;
 
-    # TODO
 }
 
 1;
