@@ -1,6 +1,7 @@
 package Clapp::SelfDocumenting;
 use strict;
 use warnings;
+use Data::Dumper;
 use Clapp::Utils::SimpleLogger;
 use Clapp::Utils::String;
 use List::Util qw(first);
@@ -41,6 +42,17 @@ sub new {
     # $self->log->debug("self->{name}: '%s'", $self->{name});
     # $self->log->debug("Can 'name': '%s' [%s]", $self->can('name'), $self->name);
     return $self;
+}
+
+sub has_config {
+    my ($self, $var) = @_;
+    return exists $self->{config}->{$var};
+}
+
+sub get_config {
+    my ($self, $var) = @_;
+    $self->exit_error("No such config option: %s -> %s (%s)", ref($self), $var, $self->{config}) unless exists $self->{config}->{$var};
+    return $self->{config}->{$var};
 }
 
 sub get_by_name {
@@ -105,7 +117,7 @@ sub require_config {
     my ($self, $obj, @keys) = @_;
     my $die_flag;
     for my $key (@keys) {
-        unless (defined $obj->config->{$key}) {
+        unless ($obj->get_config($key)) {
             $self->log->error("This feature requires the '$key' config setting to be set.");
         }
     }
@@ -179,8 +191,8 @@ sub doc_help {
         }
     }
     my $cur = '';
-    if ($self->parent && exists $self->parent->config->{ $self->name }) {
-        my $val = $self->app->utils->{string}->human_readable($self->parent->config->{ $self->name });
+    if ($self->parent && $self->parent->get_config( $self->name )) {
+        my $val = $self->app->utils->{string}->human_readable($self->parent->get_config( $self->name ));
         $cur = $self->style($args{mode}, 'default', "%s", $val);
     }
     $s .= sprintf("%s  %s %s\n", $self->doc_usage(%args), $self->synopsis, $cur);
@@ -252,11 +264,11 @@ sub doc_version {
     $ret .= $self->style( $mode, 'heading', "Configuration:\n" );
     $ret .= sprintf( "  %s : %s\n",
         $self->style($mode, 'command', $self->name),
-        $self->style($mode, 'config', $self->app->utils->{string}->dump($self->config)));
+        $self->style($mode, 'config', $self->app->utils->{string}->dump($self->{config})));
     for (@{$self->commands}) {
         $ret .= sprintf( "  %s : %s\n",
             $self->style($mode, 'command', $_->full_name),
-            $self->style($mode, 'config', $self->app->utils->{string}->dump($_->config)));
+            $self->style($mode, 'config', $self->app->utils->{string}->dump($_->{config})));
     }
     return $ret;
 }

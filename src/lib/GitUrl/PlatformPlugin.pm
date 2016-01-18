@@ -26,10 +26,10 @@ sub new {
     );
 }
 
-sub get_token { my ($class) = shift; return $class->app->config->{ $class->name . '_token' }; }
-sub get_user  { my ($class) = shift; return $class->app->config->{ $class->name . '_user' }; }
-sub get_api   { my ($class) = shift; return $class->app->config->{ $class->name . '_api' }; }
-sub get_orgs  { my ($class) = shift; return $class->app->config->{ $class->name . '_orgs' }; }
+sub get_token { my ($class) = shift; return $class->app->get_config( $class->name . '_token' ); }
+sub get_user  { my ($class) = shift; return $class->app->get_config( $class->name . '_user' ); }
+sub get_api   { my ($class) = shift; return $class->app->get_config( $class->name . '_api' ); }
+sub get_orgs  { my ($class) = shift; return $class->app->get_config( $class->name . '_orgs' ); }
 sub get_hosts  { return $_[0]->{hosts}; }
 
 sub alias_for_host {
@@ -78,8 +78,8 @@ sub inject {
 
 sub clone_dir {
     my ($self, $loc) = @_;
-    my $basedir = $self->app->config->{repo_dirs}->[0];
-    my $pattern = $self->app->config->{repo_dir_patterns}->[0];
+    my $basedir = $self->app->get_config("repo_dirs")->[0];
+    my $pattern = $self->app->get_config("repo_dir_patterns")->[0];
     return $self->app->utils->{string}->fill_template("$basedir/$pattern", $loc);
 }
 
@@ -104,7 +104,7 @@ sub clone_url_http
 sub clone_url
 {
     my ($self, $loc) = @_;
-    if ($self->app->config->{prefer_ssh} && grep {$_ eq $loc->{owner} } @{ $self->get_orgs }) {
+    if ($self->app->get_config("prefer_ssh") && grep {$_ eq $loc->{owner} } @{ $self->get_orgs }) {
         $self->clone_url_ssh( $loc );
     }
     $self->clone_url_http( $loc );

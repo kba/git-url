@@ -71,8 +71,8 @@ sub inject {
         options => [ $options->{mode} ],
         exec => sub {
             my ($this, $argv) = @_;
-            $self->log->debug("%s", $this->config);
-            print $this->app->doc_version(%{ $this->config });
+            $self->log->debug("%s", $this->{config});
+            print $this->app->doc_version(%{ $this->{config} });
         }
     );
 
@@ -104,7 +104,7 @@ sub inject {
                 $self->log->debug("%s -> %s", ref $it, $_);
                 $it = $it->get_by_name($_);
             }
-            return print $it->doc_help(%{ $this->config });
+            return print $it->doc_help(%{ $this->{config} });
         },
         arguments => [
             {
@@ -123,12 +123,12 @@ sub on_configure {
     my ($self, $app) = @_;
     # logging
     $app->get_option('log')->{enum} = Clapp::Utils::SimpleLogger->get->levels;
-    Clapp::Utils::SimpleLogger->get->loglevel( $app->config->{log} );
+    Clapp::Utils::SimpleLogger->get->loglevel( $app->get_config("log") );
     # dry-run
-    $ENV{DRY_RUN} = $app->config->{dry_run};
+    $ENV{DRY_RUN} = $app->get_config("dry_run");
     delete $ENV{DRY_RUN} unless $ENV{DRY_RUN};
     # interactive
-    $ENV{INTERACTIVE} = $app->config->{interactive};
+    $ENV{INTERACTIVE} = $app->get_config("interactive");
     delete $ENV{INTERACTIVE} unless $ENV{INTERACTIVE};
 }
 

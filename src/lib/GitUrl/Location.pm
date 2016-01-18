@@ -100,12 +100,11 @@ sub _parse_url
 sub _parse_shortcut {
     my ($class, $loc) = @_;
     my %self;
-    my $app_config = $class->app->config;
     # warn Dumper $class->app->config;
-    for (keys %{ $app_config->{host_aliases} }) {
+    for (keys %{ $class->app->get_config("host_aliases") }) {
         if ($loc =~ m,^$_[/:],mx) {
             $loc = sprintf("%s/%s",
-                $app_config->{host_aliases}->{ $_ },
+                $class->app->get_config("host_aliases")->{ $_ },
                 substr($loc, length($_) + 1)
             );
             last;
@@ -117,12 +116,12 @@ sub _parse_shortcut {
     if (scalar @segments == 3) {
         @self{'host', 'owner', 'repo_name'} = @segments;
     # } elsif (scalar @segments == 2) {
-        # @self{'host', 'owner', 'repo_name'} = ($app_config->{clone_from}, @segments);
+        # @self{'host', 'owner', 'repo_name'} = ($class->app->get_config("clone_from"), @segments);
     # } else {
-        # @self{'host', 'repo_name'} = ($app_config->{clone_from}, @segments);
+        # @self{'host', 'repo_name'} = ($class->app->get_config("clone_from"), @segments);
         # my $plugin = $class->app->get_plugin_by_host( $self{host} );
         # if ($plugin) {
-            # $self{owner} = $app_config->{ $plugin->name . '_owner' };
+            # $self{owner} = $class->app->get_config( $plugin->name . '_owner' };
         # }
     } else {
         ($self{repo_name}) = @segments;
@@ -180,10 +179,10 @@ sub path_to_repo {
     if ($self->{path_to_repo} && -d $self->{path_to_repo}) {
         return $self->{path_to_repo};
     }
-    my @basedirs = @{ $self->app->config->{repo_dirs} };
-    my @patterns = @{ $self->app->config->{repo_dir_patterns} };
+    my @basedirs = @{ $self->app->get_config("repo_dirs") };
+    my @patterns = @{ $self->app->get_config("repo_dir_patterns") };
     my @additional_basedirs;
-    if ($self->app->config->{fuzzy} > 0) {
+    if ($self->app->get_config("fuzzy") > 0) {
         for my $basedir (@basedirs) {
             for my $pat (@patterns) {
                 for my $plugin (@{ $self->app->platform_plugins }) {
@@ -231,14 +230,14 @@ sub clone {
     my ($self) = @_;
     if ($self->path_to_repo) {
         $self->log->info( "Repo already cloned: '%s'.", $self->path_to_repo );
-        if (!$self->app->config->{force}) {
+        if (!$self->app->get_config("force")) {
             return;
         }
     }
     my $app = $self->app;
-    my $plugin = $self->get_plugin(exit=>0) || $app->plugins->{ $app->config->{default_platform} };
+    my $plugin = $self->get_plugin(exit=>0) || $app->plugins->{ $app->get_config("default_platform") };
     $plugin->clone_repo($self);
-    if (! $self->path_to_repo && $app->config->{create}) {
+    if (! $self->path_to_repo && $app->get_config("create")) {
         $self->log->info("Creating %s", $self->get_shortcut);
         $plugin->create_repo($self);
         $plugin->clone_repo($self);

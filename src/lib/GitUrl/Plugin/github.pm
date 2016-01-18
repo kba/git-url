@@ -23,7 +23,7 @@ sub clone_repo
 {
     my ($self, $loc, $dir) = @_;
     $loc->{host} //= 'github.com';
-    $loc->{owner} //= $self->app->config->{github_user};
+    $loc->{owner} //= $self->app->get_config("github_user");
     return $self->SUPER::clone_repo($loc, $dir);
 }
 
@@ -52,7 +52,7 @@ sub create_repo
         # sprintf("%s/orgs/%s/repos", $self->get_api, $loc->{owner}),
         sprintf("%s/user/repos", $self->get_api),
         $loc->{repo_name},
-        $self->app->config->{private} ? 'true' : 'false'
+        $self->app->get_config("private") ? 'true' : 'false'
     );
     $self->log->info($cmd);
     my $resp = $self->app->utils->{file}->qx($cmd);

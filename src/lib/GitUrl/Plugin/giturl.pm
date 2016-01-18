@@ -125,7 +125,7 @@ sub inject {
         exec => sub {
             my ($this, $argv) = @_;
             my $path = $argv->[0] ? $argv->[0] : $this->get_argument('location')->default;
-            $self->app->config->{interactive} = 1;
+            $self->app->{config}->{"interactive"} = 1;
             my $loc = GitUrl::Location->parse( $argv->[0] );
             $loc->delete_remote()
         },
@@ -155,7 +155,7 @@ sub inject {
             my ($this, $argv) = @_;
             my $path = $argv->[0] ? $argv->[0] : $this->get_argument('location')->default;
             my $loc = GitUrl::Location->parse( $path );
-            $file_utils->system( sprintf("%s %s", $app->config->{browser}, $loc->browse_url) );
+            $file_utils->system( sprintf("%s %s", $app->get_config("browser"), $loc->browse_url) );
         }
     );
 

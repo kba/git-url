@@ -118,7 +118,7 @@ sub configure {
     $self->{config} = $self->optparse_default;
     $on_configure->();
     # 3) Files
-    push @{ $inis }, $self->config->{ini} if $self->config->{ini};
+    push @{ $inis }, $self->get_config("ini") if $self->has_config("ini");
     unless (grep { $_ eq $self->app->{default_ini} } @{ $inis }) {
         unshift @{ $inis }, $self->app->{default_ini};
     }
@@ -256,10 +256,10 @@ sub optparse_kv {
             $self->log->log_die(@{$invalid});
         }
         if ($opt->{ref} && $opt->{ref} eq 'HASH') {
-            $self->config->{$k} //= {};
-            $self->config->{$k} = { %{$self->config->{$k}}, %{ $v } };
+            $self->{config}->{$k} //= {};
+            $self->{config}->{$k} = { %{ $self->get_config($k) }, %{$v} };
         } else {
-            $self->config->{$k} = $v;
+            $self->{config}->{$k} = $v;
         }
     }
 }

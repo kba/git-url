@@ -22,8 +22,8 @@ sub browse_url
     my ($cls, $self, $path) = @_;
     if (index($path, '/') == -1) {
         $self->config_requires('bitbucket_user');
-        $self->log->debug("Prepending " . $self->config->{bitbucket_user});
-        $path = join('/', $self->config->{bitbucket_user}, $path);
+        $self->log->debug("Prepending " . $self->get_config("bitbucket_user"));
+        $path = join('/', $self->get_config("bitbucket_user"), $path);
     }
     return "https://bitbucket.com/$path";
 }
