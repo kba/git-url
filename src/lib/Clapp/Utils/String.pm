@@ -77,7 +77,10 @@ sub style
     my ($class, $style, $str, @args) = @_;
     # $log->debug("Style: %s", $style);
     unless ($styles->{$style}) {
-        $log->log_die("Unknown style '$style' at " . join(' ', caller));
+        $log->log_die("Unknown style '$style' at " . join(' ', caller 1));
+    }
+    unless (defined $str) {
+        $log->log_die("Missing string to style at" . join(' ', caller 1));
     }
     $str =~ s/%[^s]/%$&/gmx;
     return colored(sprintf($str, @args), $styles->{$style});

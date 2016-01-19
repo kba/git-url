@@ -157,7 +157,10 @@ sub doc_usage {
         $ret .= sprintf " %s", join('|', map { $_->doc_name(%args) } @{ $self->commands });
     }
     if ($self->can('count_arguments') && $self->count_arguments) {
-        $ret .= sprintf " <%s>", join('|', map { $_->doc_name(%args) } @{ $self->arguments });
+        for my $arg (@{$self->arguments}) {
+            # $ret .= sprintf " <%s>", join('|', map { $_->doc_name(%args) } @{ $self->arguments });
+            $ret .= $arg->doc_usage(%args);
+        }
     }
     return $ret;
 }
@@ -182,6 +185,7 @@ sub doc_help {
     $indent //= '  ';
     $verbosity //= 1;
     $args{tag} //= 'common';
+    delete $args{tag} if $args{all};
 
     my $s = '';
     unless ($args{skip_parent}) {
@@ -213,11 +217,15 @@ sub doc_help {
             if ($self->can($count) && $self->$count) {
                 $should_nl = 1;
                 $s .= "\n";
-                my $cur_tag = '';
+                my $cur_tag = my $prev_tag = '';
                 for (sort { $a->tag cmp $b->tag || $a->name cmp $b->name } @{$self->$comp}) {
+                    $cur_tag = $_->tag;
+                    if ($args{tag} && $cur_tag ne $args{tag}) {
+                        next;
+                    }
                     if ($args{group}) {
-                        if ($_->tag ne $cur_tag) {
-                            $cur_tag = $_->tag;
+                        if ($_->tag ne $prev_tag) {
+                            $prev_tag = $_->tag;
                             $s .= sprintf("$indent%s [%s]\n",
                                 $self->style($mode, 'heading', "%s", ucfirst($comp)),
                                 $self->style($mode, 'default', $cur_tag),
@@ -274,6 +282,22 @@ sub doc_version {
 }
 
 #}}}
+
+sub human_readable_default {
+    my ($self) = @_;
+    my $val = undef;
+    if ($self->can('default')) {
+        warn 'yay';
+        warn $self->{default};
+        if (ref $self->default && ref $self->default eq 'CODE'){
+            $val = $self->default->($self);
+        } else {
+            $val = $self->default;
+        }
+    }
+    return $self->app->get_utils('string')->human_readable( $val );
+}
+
 
 
 1;

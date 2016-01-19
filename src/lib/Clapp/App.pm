@@ -40,7 +40,7 @@ sub new {
         my $util_name = $util;
         $util_name =~ s/^.*://mx;
         $util_name = lc $util_name;
-        $self->log->info("Util: %s -> %s", $util_name, $util);
+        $self->log->trace("Util: %s -> %s", $util_name, $util);
         $self->{utils}->{$util_name} = $util->new(app => $self);
     }
 

@@ -21,13 +21,21 @@ sub new {
 
 sub _common_arguments {
     my (%args) = @_;
+    my %location_base =  (
+        name     => 'location',
+        synopsis => 'Location',
+        tag      => 'common',
+    );
     return {
-        location => {
-            name     => 'location',
-            synopsis => 'Location',
+        location_optional => {
+            %location_base,
             required => 0,
-            tag      => 'common',
             default  => '.',
+            %args,
+        },
+        location => {
+            %location_base,
+            required => 1,
             %args,
         },
     };
@@ -44,7 +52,7 @@ sub inject {
     $app->add_option(
         name => 'default_platform',
         synopsis => 'Plugin to use for default_platform',
-        tag => 'common',
+        tag => 'prefs',
         enum => [],
         default => 'github',
     );
@@ -52,21 +60,21 @@ sub inject {
     $app->add_option(
         name => 'fuzzy',
         synopsis => 'Level of fuzziness for finding repos',
-        tag => 'common',
+        tag => 'prefs',
         default => 1,
     );
 
     $app->add_option(
         name => 'repo_dirs',
         synopsis => 'Base directories to scan for repos',
-        tag => 'common',
+        tag => 'prefs',
         default => [$ENV{HOME} . '/build', $ENV{HOME} . '/dotfiles/repo'],
     );
 
     $app->add_option(
         name => 'repo_dir_patterns',
         synopsis => 'Patterns for finding subdirectories in repo dirs',
-        tag => 'common',
+        tag => 'prefs',
         default => ["%host/%owner/%repo_name", "%repo_name"],
     );
 
@@ -89,7 +97,7 @@ sub inject {
     $app->add_option(
         name => 'prefer_ssh',
         synopsis => 'prefer ssh',
-        tag => 'common',
+        tag => 'prefs',
         boolean => 1,
         default => 1,
     );
@@ -112,7 +120,7 @@ sub inject {
     $app->add_option(
         name => 'browser',
         synopsis => 'Browser to use',
-        tag => 'common',
+        tag => 'prefs',
         env => 'BROWSER',
         default => $ENV{BROWSER} || 'chromium',
     );
@@ -124,7 +132,7 @@ sub inject {
         arguments => [ _common_arguments->{location} ],
         exec => sub {
             my ($this, $argv) = @_;
-            my $path = $argv->[0] ? $argv->[0] : $this->get_argument('location')->default;
+            my $path = $argv->[0];
             $self->app->{config}->{"interactive"} = 1;
             my $loc = GitUrl::Location->parse( $argv->[0] );
             $loc->delete_remote()
@@ -135,7 +143,7 @@ sub inject {
         name => 'parse',
         synopsis => 'Test parsing',
         tag => 'common',
-        arguments => [ _common_arguments->{location} ],
+        arguments => [ _common_arguments->{location_optional} ],
         exec => sub {
             my ($this, $argv) = @_;
             my $path = $argv->[0] ? $argv->[0] : $this->get_argument('location')->default;
@@ -150,7 +158,7 @@ sub inject {
         name => 'www',
         synopsis => 'Open in browser',
         tag => 'common',
-        arguments => [ _common_arguments->{location} ],
+        arguments => [ _common_arguments->{location_optional} ],
         exec => sub {
             my ($this, $argv) = @_;
             my $path = $argv->[0] ? $argv->[0] : $this->get_argument('location')->default;
@@ -163,7 +171,7 @@ sub inject {
         name => 'info',
         synopsis => 'Show info about location',
         tag => 'common',
-        arguments => [ _common_arguments->{location} ],
+        arguments => [ _common_arguments->{location_optional} ],
         exec => sub {
             my ($this, $argv) = @_;
             my $path = $argv->[0] ? $argv->[0] : $this->get_argument('location')->default;
@@ -186,7 +194,7 @@ sub inject {
         name => 'shell',
         synopsis => 'Show browse URL',
         tag => 'common',
-        arguments => [ _common_arguments()->{location} ],
+        arguments => [ _common_arguments()->{location_optional} ],
         exec => sub {
             my ($this, $argv) = @_;
             my $loc = GitUrl::Location->parse( $argv->[0] );
@@ -225,6 +233,7 @@ sub inject {
                 }
                 return;
             }
+            my $path = $argv->[0] ? $argv->[0] : $this->get_argument('location')->default;
             my $matching_session = $self->app->get_utils('string')->fuzzy_match($argv->[0], map {$_->get_shortcut} @sessions );
             if (! $matching_session) {
                 my $loc = GitUrl::Location->parse( $argv->[0] );

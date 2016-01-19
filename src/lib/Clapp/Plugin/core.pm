@@ -90,6 +90,13 @@ sub inject {
                 default => 0,
             },
             {
+                name => 'all',
+                synopsis => 'Show all options and commands',
+                tag => 'common',
+                boolean => 1,
+                default => 0,
+            },
+            {
                 name => 'verbosity',
                 synopsis => 'Verbosity of help output',
                 tag => 'common',
@@ -102,8 +109,9 @@ sub inject {
                 name => 'topic',
                 synopsis => 'cmd, option etc.',
                 tag => 'common',
+                repeatable => 1,
                 required => 0,
-                default => '',
+                default => undef,
             },
         ],
         exec => sub {

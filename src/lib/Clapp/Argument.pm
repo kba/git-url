@@ -17,4 +17,20 @@ sub new {
     return $cls->SUPER::new($cls, [qw(required default repeatable)], %self);
 }
 
+sub doc_usage {
+    my ($self, %args) = @_;
+    $self->_require_mode(%args);
+    my $mode = $args{mode};
+    my $ret = " ";
+    # $ret .= $self->required ? '<' : '[';
+    $ret .= sprintf("%s", $self->style($args{mode}, 'argument', $self->name));
+    $ret .= '?' unless ($self->required);
+    $ret .= '...' if ($self->repeatable);
+    # if (! $self->required) {
+    #     $ret .= $self->style($args{mode}, 'default', " %s", $self->human_readable_default);
+    # }
+    # $ret .= $self->required ? '>' : ']';
+    return $ret;
+}
+
 1;
