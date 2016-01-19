@@ -36,10 +36,10 @@ sub _common_arguments {
 sub inject {
     my ($self, $app) = @_;
 
-    my $tmux_utils = new GitUrl::Utils::Tmux(app => $app);
-    my $git_utils = new GitUrl::Utils::Git(app => $app);
-    my $string_utils = new Clapp::Utils::String(app => $app);
-    my $file_utils = new Clapp::Utils::File(app => $app);
+    # my $tmux_utils = new GitUrl::Utils::Tmux(app => $app);
+    # my $git_utils = new GitUrl::Utils::Git(app => $app);
+    # my $string_utils = new Clapp::Utils::String(app => $app);
+    # my $file_utils = new Clapp::Utils::File(app => $app);
 
     $app->add_option(
         name => 'default_platform',
@@ -141,7 +141,7 @@ sub inject {
             my $path = $argv->[0] ? $argv->[0] : $this->get_argument('location')->default;
             print sprintf( "%s: %s\n",
                 $self->style( 'cli', 'heading', 'Repo' ),
-                $string_utils->dump(GitUrl::Location->parse( $path ))
+                $self->app->get_utils('string')->dump(GitUrl::Location->parse( $path ))
             );
         },
     );
@@ -155,7 +155,7 @@ sub inject {
             my ($this, $argv) = @_;
             my $path = $argv->[0] ? $argv->[0] : $this->get_argument('location')->default;
             my $loc = GitUrl::Location->parse( $path );
-            $file_utils->system( sprintf("%s %s", $app->get_config("browser"), $loc->browse_url) );
+            $self->app->get_utils('file')->system( sprintf("%s %s", $app->get_config("browser"), $loc->browse_url) );
         }
     );
 
@@ -169,15 +169,15 @@ sub inject {
             my $path = $argv->[0] ? $argv->[0] : $this->get_argument('location')->default;
             print sprintf( "%s: %s\n",
                 $self->style( 'cli', 'heading', 'Current Branch' ),
-                $git_utils->git_current_branch($path)
+                $self->app->get_utils('git')->git_current_branch($path)
             );
             print sprintf( "%s: %s\n",
                 $self->style( 'cli', 'heading', 'Basedir' ),
-                $git_utils->git_basedir($path)
+                $self->app->get_utils('git')->git_basedir($path)
             );
             print sprintf( "%s: %s\n",
                 $self->style( 'cli', 'heading', 'Config' ),
-                $string_utils->dump($git_utils->git_config($path))
+                $self->app->get_utils('string')->dump($self->app->get_utils('git')->git_config($path))
             );
         }
     );
@@ -191,8 +191,8 @@ sub inject {
             my ($this, $argv) = @_;
             my $loc = GitUrl::Location->parse( $argv->[0] );
             $loc->clone();
-            $self->app->utils->{file}->chdir($loc->path_to_repo);
-            $self->app->utils->{file}->system('zsh');
+            $self->app->get_utils("file")->chdir($loc->path_to_repo);
+            $self->app->get_utils("file")->system('zsh');
         }
     );
 
@@ -218,22 +218,22 @@ sub inject {
         arguments => [ _common_arguments->{location} ],
         exec => sub {
             my ($this, $argv) = @_;
-            my @sessions = @{ $tmux_utils->list_sessions };
+            my @sessions = @{ $self->app->get_utils('tmux')->list_sessions };
             unless (scalar @{ $argv }) {
                 for (@sessions) {
                     print $self->style('cli', 'option', "  * %s (%s)\n", $_->{repo_name}, $_->path_to_repo);
                 }
                 return;
             }
-            my $matching_session = $string_utils->fuzzy_match($argv->[0], map {$_->get_shortcut} @sessions );
+            my $matching_session = $self->app->get_utils('string')->fuzzy_match($argv->[0], map {$_->get_shortcut} @sessions );
             if (! $matching_session) {
                 my $loc = GitUrl::Location->parse( $argv->[0] );
                 $loc->clone();
                 if ($loc->path_to_repo) {
-                    $tmux_utils->create_session( $loc );
+                    $self->app->get_utils('tmux')->create_session( $loc );
                 }
             } elsif (! ref $matching_session) {
-                $tmux_utils->attach( $matching_session );
+                $self->app->get_utils('tmux')->attach( $matching_session );
             } else {
                 for (@{ $matching_session }) {
                     print $self->style('cli', 'option', "  * %s (%s)\n", $_->{repo_name}, $_->path_to_repo);

@@ -97,15 +97,6 @@ sub inject {
                 default => 1,
             },
         ],
-        exec => sub {
-            my ($this, $argv) = @_;
-            my $it = $this->app;
-            for (@{$argv}) {
-                $self->log->debug("%s -> %s", ref $it, $_);
-                $it = $it->get_by_name($_);
-            }
-            return print $it->doc_help(%{ $this->{config} });
-        },
         arguments => [
             {
                 name => 'topic',
@@ -115,6 +106,15 @@ sub inject {
                 default => '',
             },
         ],
+        exec => sub {
+            my ($this, $argv) = @_;
+            my $it = $this->app;
+            for (@{$argv}) {
+                $self->log->debug("%s -> %s", ref $it, $_);
+                $it = $it->get_by_name($_);
+            }
+            return print $it->doc_help(%{ $this->{config} });
+        },
     );
 
 }

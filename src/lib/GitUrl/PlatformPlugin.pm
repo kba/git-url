@@ -80,7 +80,7 @@ sub clone_dir {
     my ($self, $loc) = @_;
     my $basedir = $self->app->get_config("repo_dirs")->[0];
     my $pattern = $self->app->get_config("repo_dir_patterns")->[0];
-    return $self->app->utils->{string}->fill_template("$basedir/$pattern", $loc);
+    return $self->app->get_utils("string")->fill_template("$basedir/$pattern", $loc);
 }
 
 sub clone_url_ssh
@@ -113,7 +113,7 @@ sub clone_url
 sub clone_repo
 {
     my ($self, $loc, $dir) = @_;
-    $self->app->utils->{file}->qx('git clone %s %s', $self->clone_url($loc), $self->clone_dir($loc));
+    $self->app->get_utils("file")->qx('git clone %s %s', $self->clone_url($loc), $self->clone_dir($loc));
 }
 
 sub on_configure {

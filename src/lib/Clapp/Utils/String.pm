@@ -79,6 +79,7 @@ sub style
     unless ($styles->{$style}) {
         $log->log_die("Unknown style '$style' at " . join(' ', caller));
     }
+    $str =~ s/%[^s]/%$&/gmx;
     return colored(sprintf($str, @args), $styles->{$style});
 }
 

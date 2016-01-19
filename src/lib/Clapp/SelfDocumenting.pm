@@ -76,10 +76,10 @@ sub style {
         $ret =~ s/^.*:://;
         return $ret;
     }
-    @args = map {$self->app->utils->{string}->dump($_)} @args;
+    @args = map {$self->app->get_utils("string")->dump($_)} @args;
     $self->_require_mode(mode=>$mode);
     if ($mode eq 'cli') {
-        return $self->app->utils->{string}->style($style, $str, @args);
+        return $self->app->get_utils("string")->style($style, $str, @args);
     } else {
         return sprintf($str, @args);
     }
@@ -170,7 +170,7 @@ sub exit_error {
     print $self->app->doc_help(
         mode => 'cli',
         verbosity => 0,
-        error => sprintf($msg, Dumper @args),
+        error => sprintf($msg . join(' ', caller 3), map { $self->app->get_utils("string")->dump($_) } @args),
     );
     exit 1;
 }
@@ -191,8 +191,8 @@ sub doc_help {
         }
     }
     my $cur = '';
-    if ($self->parent && $self->parent->get_config( $self->name )) {
-        my $val = $self->app->utils->{string}->human_readable($self->parent->get_config( $self->name ));
+    if ($self->parent && $self->parent->has_config( $self->name )) {
+        my $val = $self->app->get_utils("string")->human_readable($self->parent->get_config( $self->name ));
         $cur = $self->style($args{mode}, 'default', "%s", $val);
     }
     $s .= sprintf("%s  %s %s\n", $self->doc_usage(%args), $self->synopsis, $cur);
@@ -219,7 +219,7 @@ sub doc_help {
                         if ($_->tag ne $cur_tag) {
                             $cur_tag = $_->tag;
                             $s .= sprintf("$indent%s [%s]\n",
-                                $self->style($mode, 'heading', "%s %s", ucfirst($comp)),
+                                $self->style($mode, 'heading', "%s", ucfirst($comp)),
                                 $self->style($mode, 'default', $cur_tag),
                             );
                         }
@@ -264,11 +264,11 @@ sub doc_version {
     $ret .= $self->style( $mode, 'heading', "Configuration:\n" );
     $ret .= sprintf( "  %s : %s\n",
         $self->style($mode, 'command', $self->name),
-        $self->style($mode, 'config', $self->app->utils->{string}->dump($self->{config})));
+        $self->style($mode, 'config', $self->app->get_utils("string")->dump($self->{config})));
     for (@{$self->commands}) {
         $ret .= sprintf( "  %s : %s\n",
             $self->style($mode, 'command', $_->full_name),
-            $self->style($mode, 'config', $self->app->utils->{string}->dump($_->{config})));
+            $self->style($mode, 'config', $self->app->get_utils("string")->dump($_->{config})));
     }
     return $ret;
 }

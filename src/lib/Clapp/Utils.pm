@@ -1,4 +1,7 @@
 package Clapp::Utils;
+use strict;
+use warnings;
+use Data::Dumper;
 use Clapp::Utils::Object;
 
 sub new {
@@ -10,11 +13,13 @@ sub new {
 
 sub app {
     my ($self) = @_;
+    die "Must set 'app'" if ! ref $self || ! $self->{app};
     return $self->{app};
 }
 
 sub utils {
     my ($self) = @_;
+    die "Must set 'app'" if ! ref $self || ! $self->{app};
     return $self->{app}->{utils};
 }
 

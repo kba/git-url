@@ -52,19 +52,18 @@ sub parse {
 sub _parse_filename
 {
     my ($class, $loc) = @_;
-    my $path_to_repo = $class->app->utils->{git}->git_basedir($loc);
+    my $path_to_repo = $class->app->get_utils("git")->git_basedir($loc);
     unless ($path_to_repo) {
         $class->app->exit_error("Not in a git directory: $loc");
     }
-    my $url = $class->app->utils->{git}->git_remote_url($path_to_repo);
-    warn $url;
+    my $url = $class->app->get_utils("git")->git_remote_url($path_to_repo);
     my $self = GitUrl::Location->_parse_url( $url );
     $self->{path_to_repo} = $path_to_repo;
-    $self->{branch} = $class->app->utils->{git}->git_current_branch($path_to_repo);
+    $self->{branch} = $class->app->get_utils("git")->git_current_branch($path_to_repo);
     $self->{path_within_repo} = File::Spec->abs2rel($loc, $path_to_repo);
     $self->{repo_name} = File::Basename::basename( $path_to_repo );
-    $class->log->info("SELF: %s", $self);
-    # $self{git_config} = $class->app->utils->{git}->git_config($loc);
+    # $class->log->info("SELF: %s", $self);
+    # $self{git_config} = $class->app->get_utils("git")->git_config($loc);
     return $self;
 }
 
@@ -188,7 +187,7 @@ sub path_to_repo {
                 for my $plugin (@{ $self->app->platform_plugins }) {
                     for my $host (@{ $plugin->get_hosts }) {
                         for my $org (@{ $plugin->get_orgs }) {
-                            my $subdir = $self->app->utils->{string}->fill_template("$basedir/$pat", {
+                            my $subdir = $self->app->get_utils("string")->fill_template("$basedir/$pat", {
                                 host => $host,
                                 owner => $org,
                             });
@@ -202,7 +201,7 @@ sub path_to_repo {
     }
     for my $basedir (@basedirs) {
         for (@patterns) {
-            my $subdir = $self->app->utils->{string}->fill_template("$basedir/$_", $self);
+            my $subdir = $self->app->get_utils("string")->fill_template("$basedir/$_", $self);
             next if $subdir =~ m/%/mx;
             if (-d $subdir) {
                 $self->{path_to_repo} = $subdir;
@@ -210,7 +209,7 @@ sub path_to_repo {
             }
         }
         for (@additional_basedirs) {
-            my $subdir = $self->app->utils->{string}->fill_template($_, $self);
+            my $subdir = $self->app->get_utils("string")->fill_template($_, $self);
             next if $subdir =~ m/%/mx;
             if (-d $subdir) {
                 $self->{path_to_repo} = $subdir;

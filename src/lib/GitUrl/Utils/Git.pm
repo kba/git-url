@@ -10,12 +10,12 @@ sub git_basedir
     $self->log->trace("git_dir_for_filename $path");
 
     if (!-d $path) {
-        $self->utils->{file}->chdir(dirname($path));
+        $self->app->get_utils("file")->chdir(dirname($path));
     }
     else {
-        $self->utils->{file}->chdir($path);
+        $self->app->get_utils("file")->chdir($path);
     }
-    my $dir = $self->utils->{file}->qx('git rev-parse --show-toplevel 2>/dev/null');
+    my $dir = $self->app->get_utils("file")->qx('git rev-parse --show-toplevel 2>/dev/null');
     chomp($dir);
     if ($? > 0) {
         $self->log->trace("git rev-parse failed");
@@ -27,30 +27,30 @@ sub git_config
 {
     my ($self, $path) = @_;
     $path = sprintf("%s/.git/config", $self->git_basedir($path));
-    return $self->_parse_git_config(@{$self->utils->{file}->slurp($path)});
+    return $self->_parse_git_config(@{$self->app->get_utils("file")->slurp($path)});
 }
 
 sub git_current_branch
 {
     my ($self, $path) = @_;
-    $self->utils->{file}->chdir($self->git_basedir($path));
-    return $self->utils->{file}->qx("git rev-parse --abbrev-ref HEAD");
+    $self->app->get_utils("file")->chdir($self->git_basedir($path));
+    return $self->app->get_utils("file")->qx("git rev-parse --abbrev-ref HEAD");
 }
 
 sub git_remote_for_branch
 {
     my ($self, $path, $branch) = @_;
-    $self->utils->{file}->chdir($self->git_basedir($path));
+    $self->app->get_utils("file")->chdir($self->git_basedir($path));
     $branch //= $self->git_current_branch($path);
-    return $self->utils->{file}->qx("git config branch.$branch.remote");
+    return $self->app->get_utils("file")->qx("git config branch.$branch.remote");
 }
 
 sub git_remote_url
 {
     my ($self, $path, $remote) = @_;
-    $self->utils->{file}->chdir($self->git_basedir($path));
+    $self->app->get_utils("file")->chdir($self->git_basedir($path));
     $remote //= $self->git_remote_for_branch($path);
-    return $self->utils->{file}->qx("git config remote.$remote.url");
+    return $self->app->get_utils("file")->qx("git config remote.$remote.url");
 }
 
 sub _parse_git_config

@@ -17,7 +17,6 @@ sub new {
     $args{utils} //= [];
     unshift @{ $args{utils} }, qw(Clapp::Utils::File Clapp::Utils::String);
     my @utils = @{ delete $args{utils} };
-    $args{utils} = {};
 
     $args{exec} = sub {};
     $args{default_command} //= 'help';
@@ -36,12 +35,13 @@ sub new {
         # $self->log->debug("%s", $self);
         $self->plugins->{$plugin_name}->inject($self);
     }
+    $self->{utils} = {};
     for my $util (@utils) {
         my $util_name = $util;
         $util_name =~ s/^.*://mx;
         $util_name = lc $util_name;
-        $self->log->trace("Util: %s -> %s", $util_name, $util);
-        $self->utils->{$util_name} = $util->new(app => $self);
+        $self->log->info("Util: %s -> %s", $util_name, $util);
+        $self->{utils}->{$util_name} = $util->new(app => $self);
     }
 
     if ($self->count_arguments || ! $self->count_commands) {
@@ -49,6 +49,12 @@ sub new {
     }
 
     return $self;
+}
+
+sub get_utils {
+    my ($self, $name) = @_;
+    $self->exit_error("No such utils $name") if ! $name || ! exists $self->{utils}->{$name};
+    return $self->{utils}->{$name};
 }
 
 sub configure {

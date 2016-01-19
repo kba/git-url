@@ -55,7 +55,7 @@ sub create_repo
         $self->app->get_config("private") ? 'true' : 'false'
     );
     $self->log->info($cmd);
-    my $resp = $self->app->utils->{file}->qx($cmd);
+    my $resp = $self->app->get_utils("file")->qx($cmd);
     if ([ split("\n", $resp) ]->[0] !~ 201) {
         $self->exit_error("Failed to create the repo: $resp");
     }
