@@ -3,6 +3,7 @@ use strict;
 use warnings;
 
 use Clapp::Utils::Object;
+use Moo;
 use Cwd qw(getcwd realpath);
 use Data::Dumper;
 $Data::Dumper::Terse = 1;
@@ -36,8 +37,8 @@ sub log { return Clapp::Utils::SimpleLogger->get(); }
 
 sub parse {
     my ($class, $location) = @_;
-    $class->log->log_die("Repo->parse is a class method") if (ref $class);
-    $class->log->log_die("Must pass location to Repo->parse") unless ($location);
+    $class->log->log_die("Repo->parse is a class method") if ref $class;
+    $class->log->log_die("Must pass location to Repo->parse") unless $location;
 
     if ($location =~ /^(https?:|.+@[^\/]+:)/mx) {
         return $class->_parse_url($location);
@@ -54,7 +55,7 @@ sub _parse_filename
     my ($class, $loc) = @_;
     my $path_to_repo = $class->app->get_utils("git")->git_basedir($loc);
     unless ($path_to_repo) {
-        $class->app->exit_error("Not in a git directory: $loc");
+        $class->app->exit_error("Not in a git directory: $loc %s", caller 1);
     }
     my $url = $class->app->get_utils("git")->git_remote_url($path_to_repo);
     my $self = GitUrl::Location->_parse_url( $url );
@@ -96,6 +97,9 @@ sub _parse_url
     return GitUrl::Location->new(%self);
 }
 
+# gh/kba/git-url
+# kba/git-url
+# git-url
 sub _parse_shortcut {
     my ($class, $loc) = @_;
     my %self;
@@ -114,18 +118,13 @@ sub _parse_shortcut {
     my @segments = split(m,/,mx, $loc, 3);
     if (scalar @segments == 3) {
         @self{'host', 'owner', 'repo_name'} = @segments;
-    # } elsif (scalar @segments == 2) {
-        # @self{'host', 'owner', 'repo_name'} = ($class->app->get_config("clone_from"), @segments);
-    # } else {
-        # @self{'host', 'repo_name'} = ($class->app->get_config("clone_from"), @segments);
-        # my $plugin = $class->app->get_plugin_by_host( $self{host} );
-        # if ($plugin) {
-            # $self{owner} = $class->app->get_config( $plugin->name . '_owner' };
-        # }
+    } elsif (scalar @segments == 2) {
+        @self{'owner', 'repo_name'} = (@segments);
     } else {
         ($self{repo_name}) = @segments;
     }
     my $self = GitUrl::Location->new(%self);
+    $self{host} = $self->get_plugin->
     if ($self->path_to_repo) {
         return GitUrl::Location->parse($self->path_to_repo);
     }
@@ -141,36 +140,30 @@ sub get_shortcut {
             $host = $plugin->alias_for_host($self->{host});
         }
         return sprintf("%s/%s/%s", $host, $self->{owner}, $self->{repo_name});
+    } elsif ($self->{owner}) {
+        return sprintf("%s/%s", $self->{owner}, $self->{repo_name});
+    } else {
+        return $self->{repo_name};
     }
-    return sprintf("%s/%s", $self->{owner}, $self->{repo_name});
 }
 
 sub get_plugin {
     my ($self, %args) = @_;
-    unless ($self->{host}) {
-        if ($args{exit}) {
-            $self->app->exit_error("Not on a remote tracking branch: %s", $self);
-        }
-        return;
-    }
-    my $plugin = $self->app->get_plugin_by_host( $self->{host} );
-    unless ($plugin) {
-        if ($args{exit}) {
-            $self->app->exit_error("Not supported by any plugin: %s", $self->{host});
-        }
-        return;
+    my $plugin = $app->plugins->{ $app->get_config("default_platform") };
+    if ($self->{host}) {
+        $plugin = $self->app->get_plugin_by_host( $self->{host} );
     }
     return $plugin;
 }
 
 sub browse_url {
     my ($self) = @_;
-    return $self->get_plugin(exit => 1)->browse_url($self);
+    return $self->get_plugin();
 }
 
 sub clone_url {
     my ($self) = @_;
-    return $self->get_plugin(exit => 1)->clone_url($self);
+    return $self->get_plugin();
 }
 
 sub path_to_repo {
@@ -234,7 +227,7 @@ sub clone {
         }
     }
     my $app = $self->app;
-    my $plugin = $self->get_plugin(exit=>0) || $app->plugins->{ $app->get_config("default_platform") };
+    my $plugin = $self->get_plugin;
     $plugin->clone_repo($self);
     if (! $self->path_to_repo && $app->get_config("create")) {
         $self->log->info("Creating %s", $self->get_shortcut);

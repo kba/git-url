@@ -27,6 +27,14 @@ sub _common_arguments {
         tag      => 'common',
     );
     return {
+        location_or_pattern => {
+            %location_base,
+            name => 'location or pattern',
+            synopsis => 'Location or fuzzy shortcut pattern',
+            required => 0,
+            default  => '.',
+            %args,
+        },
         location_optional => {
             %location_base,
             required => 0,
@@ -147,10 +155,12 @@ sub inject {
         exec => sub {
             my ($this, $argv) = @_;
             my $path = $argv->[0] ? $argv->[0] : $this->get_argument('location')->default;
+            my $loc = GitUrl::Location->parse( $path );
             print sprintf( "%s: %s\n",
                 $self->style( 'cli', 'heading', 'Repo' ),
-                $self->app->get_utils('string')->dump(GitUrl::Location->parse( $path ))
+                $self->app->get_utils('string')->dump($loc)
             );
+            printf "%s", $loc->get_shortcut;
         },
     );
 
@@ -222,8 +232,12 @@ sub inject {
     $app->add_command(
         name => 'tmux',
         synopsis => 'Open/attach tmux',
+        description => $app->get_utils('string')->unindent(12, qq(
+            Creates or reattaches to a session named by the shortcut of a repository.
+            Lists sessions for repositories if no argument is given.
+        )),
         tag => 'common',
-        arguments => [ _common_arguments->{location} ],
+        arguments => [ _common_arguments->{location_or_pattern} ],
         exec => sub {
             my ($this, $argv) = @_;
             my @sessions = @{ $self->app->get_utils('tmux')->list_sessions };

@@ -21,7 +21,7 @@ my %HELP_VERBOSITY = (
 sub new {
     my ($class, $subclass, $subclass_required, %_self) = @_;
 
-    $_self{description} //= $_self{synopsis};
+    $_self{description} ||= $_self{synopsis};
     # $_self{parent} //= undef;
 
     Clapp::Utils::Object->validate_required_args( $subclass, [@_required, @{ $subclass_required }],  %_self );
@@ -166,14 +166,14 @@ sub doc_usage {
 }
 
 sub exit_error {
-    my ($self, $msg, @args) = @_;
     use Data::Dumper;
     $Data::Dumper::Terse = 1;
     $Data::Dumper::Indent = 1;
+    my ($self, $msg, @args) = @_;
     print $self->app->doc_help(
         mode => 'cli',
         verbosity => 0,
-        error => sprintf($msg . join(' ', caller 3), map { $self->app->get_utils("string")->dump($_) } @args),
+        error => sprintf($msg . join(' ', caller 3), map { Clapp::Utils::String->dump($_) } @args),
     );
     exit 1;
 }
@@ -209,7 +209,9 @@ sub doc_help {
     }
     if ($verbosity >= $HELP_VERBOSITY{USAGE}) {
         if ($verbosity >= $HELP_VERBOSITY{DESCRIPTION}) {
-            $s .= sprintf("\n$indent%s\n", $self->description($mode));
+            my $description = $self->description;
+            $description =~ s/^/$indent/mxg;
+            $s .= sprintf("\n%s\n", $description);
         }
         my $should_nl = 0;
         for my $comp (qw(options commands arguments)) {

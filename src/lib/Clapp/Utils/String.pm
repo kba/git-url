@@ -17,26 +17,26 @@ my $log = Clapp::Utils::SimpleLogger->get();
 #----------------
 
 our $styles = {
-    'config'        => 'white',
-    'option'        => 'magenta bold',
-    'value'         => 'cyan',
-    'value-default' => 'cyan bold',
-    'default'       => 'black bold',
-    'command'       => 'green bold',
-    'arg'           => 'yellow bold',
-    'app'           => 'blue bold',
-    'argument'      => 'blue bold',
-    'heading'       => 'underline',
-    'error'         => 'bold red',
-    'bold'          => 'bold',
+    'config'            => 'white',
+    'option'            => 'magenta bold',
+    'value'             => 'cyan',
+    'value-default'     => 'cyan bold',
+    'default'           => 'black bold',
+    'command'           => 'green bold',
+    'app'               => 'blue bold',
+    'argument-required' => 'yellow bold',
+    'argument-optional' => 'yellow',
+    'heading'           => 'underline',
+    'error'             => 'bold red',
+    'bold'              => 'bold',
 };
 
 sub unindent
 {
     my ($class, $amount, $str) = @_;
-    # $str =~ s/\n*\z//mx;
-    # $str =~ s/\A\n+//mx;
     $str =~ s/^\x20{$amount}//mxg;
+    $str =~ s/\A\n+//mx;
+    $str =~ s/\s*\n*\Z//mx;
     return $str;
 }
 

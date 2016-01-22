@@ -25,6 +25,15 @@ sub new {
 
     my $self = $class->SUPER::new(%args, parent => undef);
 
+    $self->{utils} = {};
+    for my $util (@utils) {
+        my $util_name = $util;
+        $util_name =~ s/^.*://mx;
+        $util_name = lc $util_name;
+        $self->log->trace("Util: %s -> %s", $util_name, $util);
+        $self->{utils}->{$util_name} = $util->new(app => $self);
+    }
+
     for my $plugin (@plugins) {
         my $plugin_name = ref($plugin) ? ref($plugin) : $plugin;
         $plugin_name =~ s/^.*://mx;
@@ -34,14 +43,6 @@ sub new {
             : $plugin->new(parent => $self);
         # $self->log->debug("%s", $self);
         $self->plugins->{$plugin_name}->inject($self);
-    }
-    $self->{utils} = {};
-    for my $util (@utils) {
-        my $util_name = $util;
-        $util_name =~ s/^.*://mx;
-        $util_name = lc $util_name;
-        $self->log->trace("Util: %s -> %s", $util_name, $util);
-        $self->{utils}->{$util_name} = $util->new(app => $self);
     }
 
     if ($self->count_arguments || ! $self->count_commands) {
@@ -53,7 +54,7 @@ sub new {
 
 sub get_utils {
     my ($self, $name) = @_;
-    $self->exit_error("No such utils $name") if ! $name || ! exists $self->{utils}->{$name};
+    die("No such utils '$name'", caller) if ! $name || ! exists $self->{utils}->{$name};
     return $self->{utils}->{$name};
 }
 

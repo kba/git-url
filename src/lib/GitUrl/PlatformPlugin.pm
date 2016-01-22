@@ -61,7 +61,7 @@ sub inject {
         $ENV{ sprintf( '%s_USER', uc $self->name ) } || sprintf( 'no-%s-user', $self->name ));
     $make_opt->('token', default => $ENV{sprintf("%s_TOKEN", uc $self->name)});
     $make_opt->('api', default => $ENV{sprintf("%s_API", uc $self->name)} || $self->default_api);
-    $make_opt->('orgs', default => sub {
+    $make_opt->('orgs', ref => ref [], default => sub {
             my %temp;
             my $user = $ENV{sprintf("%s_USER", uc $self->name)};
             if ($user) {

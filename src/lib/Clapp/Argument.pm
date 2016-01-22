@@ -22,14 +22,15 @@ sub doc_usage {
     $self->_require_mode(%args);
     my $mode = $args{mode};
     my $ret = " ";
-    # $ret .= $self->required ? '<' : '[';
-    $ret .= sprintf("%s", $self->style($args{mode}, 'argument', $self->name));
-    $ret .= '?' unless ($self->required);
-    $ret .= '...' if ($self->repeatable);
+    $ret .= $self->required ? '<' : '[';
+    my $style = sprintf("argument-%s", $self->required ? 'required' : 'optional');
+    $ret .= sprintf("%s", $self->style($args{mode}, $style, $self->name));
+    # $ret .= '?' unless ($self->required);
+    $ret .= '...' if $self->repeatable;
     # if (! $self->required) {
     #     $ret .= $self->style($args{mode}, 'default', " %s", $self->human_readable_default);
     # }
-    # $ret .= $self->required ? '>' : ']';
+    $ret .= $self->required ? '>' : ']';
     return $ret;
 }
 
