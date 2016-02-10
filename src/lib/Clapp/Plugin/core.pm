@@ -8,13 +8,6 @@ use Clapp::Utils::String;
 use parent 'Clapp::Plugin';
 
 my $options = {
-    mode => {
-        name => 'mode',
-        synopsis => 'Output mode',
-        tag => 'common',
-        enum => [@Clapp::SelfDocumenting::_modes],
-        default => 'cli',
-    },
 };
 
 sub new {
@@ -68,7 +61,15 @@ sub inject {
         name => 'version',
         synopsis => 'Show version information',
         tag => 'core',
-        options => [ $options->{mode} ],
+        options => [
+            mode => {
+                name => 'mode',
+                synopsis => 'Output mode',
+                tag => 'common',
+                enum => Clapp::SelfDocumenting->doc_modes,
+                default => 'cli',
+            },
+        ],
         exec => sub {
             my ($this, $argv) = @_;
             $self->log->debug("%s", $this->{config});
@@ -81,7 +82,13 @@ sub inject {
         synopsis => 'Show help',
         tag => 'core',
         options => [
-            $options->{mode},
+            mode => {
+                name => 'mode',
+                synopsis => 'Output mode',
+                tag => 'common',
+                enum => Clapp::SelfDocumenting->doc_modes,
+                default => 'cli',
+            },
             {
                 name => 'group',
                 synopsis => 'Group options/commands',

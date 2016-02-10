@@ -1,24 +1,26 @@
 package GitUrl::Utils::Git;
 use strict;
 use warnings;
-use parent 'Clapp::Utils';
 use File::Basename qw(dirname);
+use Clapp::Utils::SimpleLogger;
+
+my $log = Clapp::Utils::SimpleLogger->get;
 
 sub git_basedir
 {
     my ($self, $path) = @_;
-    $self->log->trace("git_dir_for_filename $path");
+    $log->trace("git_dir_for_filename $path");
 
     if (!-d $path) {
-        $self->app->get_utils("file")->chdir(dirname($path));
+        Clapp::Utils::File->chdir(dirname($path));
     }
     else {
-        $self->app->get_utils("file")->chdir($path);
+        Clapp::Utils::File->chdir($path);
     }
-    my $dir = $self->app->get_utils("file")->qx('git rev-parse --show-toplevel 2>/dev/null');
+    my $dir = Clapp::Utils::File->qx('git rev-parse --show-toplevel 2>/dev/null');
     chomp($dir);
     if ($? > 0) {
-        $self->log->trace("git rev-parse failed");
+        $log->trace("git rev-parse failed");
     }
     return $dir;
 }
@@ -27,30 +29,30 @@ sub git_config
 {
     my ($self, $path) = @_;
     $path = sprintf("%s/.git/config", $self->git_basedir($path));
-    return $self->_parse_git_config(@{$self->app->get_utils("file")->slurp($path)});
+    return $self->_parse_git_config(@{Clapp::Utils::File->slurp($path)});
 }
 
 sub git_current_branch
 {
     my ($self, $path) = @_;
-    $self->app->get_utils("file")->chdir($self->git_basedir($path));
-    return $self->app->get_utils("file")->qx("git rev-parse --abbrev-ref HEAD");
+    Clapp::Utils::File->chdir($self->git_basedir($path));
+    return Clapp::Utils::File->qx("git rev-parse --abbrev-ref HEAD");
 }
 
 sub git_remote_for_branch
 {
     my ($self, $path, $branch) = @_;
-    $self->app->get_utils("file")->chdir($self->git_basedir($path));
+    Clapp::Utils::File->chdir($self->git_basedir($path));
     $branch //= $self->git_current_branch($path);
-    return $self->app->get_utils("file")->qx("git config branch.$branch.remote");
+    return Clapp::Utils::File->qx("git config branch.$branch.remote");
 }
 
 sub git_remote_url
 {
     my ($self, $path, $remote) = @_;
-    $self->app->get_utils("file")->chdir($self->git_basedir($path));
+    Clapp::Utils::File->chdir($self->git_basedir($path));
     $remote //= $self->git_remote_for_branch($path);
-    return $self->app->get_utils("file")->qx("git config remote.$remote.url");
+    return Clapp::Utils::File->qx("git config remote.$remote.url");
 }
 
 sub _parse_git_config

@@ -8,8 +8,6 @@ use List::Util qw(first);
 
 use Clapp::Utils::Object;
 
-my @_required = qw(name synopsis tag parent);
-our @_modes = qw(ini man cli);
 my %HELP_VERBOSITY = (
     ONELINE => 0,
     USAGE => 1,
@@ -17,6 +15,10 @@ my %HELP_VERBOSITY = (
     HEADINGS => 3,
     FULL => 4
 );
+
+my @_required = qw(name synopsis tag parent);
+our @_modes = qw(ini man cli);
+sub doc_modes { return \@_modes }
 
 sub new {
     my ($class, $subclass, $subclass_required, %_self) = @_;
@@ -42,17 +44,6 @@ sub new {
     # $self->log->debug("self->{name}: '%s'", $self->{name});
     # $self->log->debug("Can 'name': '%s' [%s]", $self->can('name'), $self->name);
     return $self;
-}
-
-sub has_config {
-    my ($self, $var) = @_;
-    return exists $self->{config}->{$var};
-}
-
-sub get_config {
-    my ($self, $var) = @_;
-    $self->exit_error("No such config option: %s -> %s (%s)", ref($self), $var, $self->{config}) unless exists $self->{config}->{$var};
-    return $self->{config}->{$var};
 }
 
 sub get_by_name {

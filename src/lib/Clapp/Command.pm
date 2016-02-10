@@ -284,5 +284,16 @@ sub exec {
 }
 #}}}
 
+sub has_config {
+    my ($self, $var) = @_;
+    return exists $self->{config}->{$var};
+}
+
+sub get_config {
+    my ($self, $var) = @_;
+    $self->exit_error("No such config option: %s -> %s (%s)", ref($self), $var, $self->{config}) unless exists $self->{config}->{$var};
+    return $self->{config}->{$var};
+}
+
 
 1;
