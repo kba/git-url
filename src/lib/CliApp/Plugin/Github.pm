@@ -1,7 +1,7 @@
-package GitUrlApp::Plugin::Github;
+package CliApp::Plugin::Github;
 use strict;
 use warnings;
-use parent 'GitUrlApp::Plugin';
+use parent 'CliApp::Plugin';
 
 my @_hosts = qw(github.com);
 
@@ -12,7 +12,7 @@ sub new {
     return $cls->SUPER::new(%_self);
 }
 
-sub setup_options
+sub add_options
 {
     CliApp::Config->add_option(
         name => 'github_api',

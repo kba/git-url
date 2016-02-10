@@ -172,6 +172,22 @@ sub setup_options {
         default   => $ENV{SHELL} || 'bash',
     );
     __PACKAGE__->add_option(
+        name => 'loglevel',
+        env       => 'LOGLEVEL',
+        usage => '--debug[=trace|debug|info|error]',
+        synopsis  => 'Log level',
+        man_usage => '--debug[=*LEVEL*]',
+        long_desc  => HELPER::unindent(
+            12, q(
+            Specify logging level. Can be one of `trace`, `debug`, `info`
+                or `error`. If no level is specified, defaults to `debug`. If
+            the option is omitted, only errors will be logged.
+            )
+        ),
+        tag     => 'common',
+        default => $ENV{LOGLEVEL} || 'error',
+    );
+    __PACKAGE__->add_option(
         name => 'clone_opts',
         synopsis  => 'Additional arguments to pass to "git clone"',
         usage => '--clone-opts=<arg1 arg2...>',
@@ -227,6 +243,14 @@ sub setup_options {
         usage => '--no-local',
         default   => 0,
         tag       => 'common',
+    );
+    __PACKAGE__->add_option(
+        name => 'color_theme',
+        synopsis  => "Don't look for the repo in the directories",
+        usage => '--color-theme=<k:v,k:v...>',
+        ref => ref {},
+        default   => $HELPER::styles,
+        tag       => 'prefs',
     );
 
     return;
