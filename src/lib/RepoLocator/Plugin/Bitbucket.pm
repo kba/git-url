@@ -1,7 +1,7 @@
-package CliApp::Plugin::Bitbucket;
+package RepoLocator::Plugin::Bitbucket;
 use strict;
 use warnings;
-use parent 'CliApp::Plugin';
+use parent 'RepoLocator::Plugin';
 
 my @_hosts = qw(bitbucket.org);
 
@@ -14,7 +14,8 @@ sub new {
 
 sub add_options
 {
-    CliApp::Config->add_option(
+    my ($cls, $parent) = @_;
+    $parent->add_option(
         name => 'bitbucket_api',
         usage => '--bitbucket-api=<API URL>',
         synopsis  => 'Base URL of the Bitbucket API to use.',
@@ -22,7 +23,7 @@ sub add_options
         default => 'https://api.bitbucket.org/2.0',
         tag     => 'bitbucket',
     );
-    CliApp::Config->add_option(
+    $parent->add_option(
         name => 'bitbucket_user',
         usage => '--bitbucket-user=<user name>',
         synopsis  => 'Your bitbucket user name.',
@@ -30,14 +31,14 @@ sub add_options
         default   => $ENV{BITBUCKET_USER},
         tag       => 'bitbucket',
     );
-    CliApp::Config->add_option(
+    $parent->add_option(
         name => 'bitbucket_fork_policy',
         usage => '--bitbucket-fork-policy=<allow_forks|no_public_forks|no_forks>',
         synopsis  => 'The fork policy for newly created repos.',
         default   => 'allow_forks',
         tag       => 'bitbucket',
     );
-    CliApp::Config->add_option(
+    $parent->add_option(
         name => 'bitbucket_password',
         usage => '--bitbucket-password=<password>',
         synopsis  => 'Your bitbucket password.',

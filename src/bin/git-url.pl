@@ -6,14 +6,16 @@ use Cwd qw(realpath);
 use File::Basename qw(dirname);
 
 use lib realpath(dirname(realpath $0) . '/../lib');
-use CliApp;
+use RepoLocator;
 
 my @ARGV_PROCESSED;
 my $cli_config = {};
 my $in_args    = 0;
 while (my $arg = shift(@ARGV)) {
     if ($arg =~ '^-' && !$in_args) {
-        CliApp::Config->parse_kv($cli_config, $arg);
+        $arg =~ s/^-*//mx;
+        my ($k, $v) = split('=', $arg);
+        $cli_config->{$k} = $v // 1;
     }
     else {
         $in_args = 1;
@@ -22,8 +24,8 @@ while (my $arg = shift(@ARGV)) {
 }
 my $cmd_name = shift(@ARGV_PROCESSED) || 'usage';
 $cmd_name =~ s/[^a-z0-9]/_/gimx;
-my $cmd = CliApp->get_command($cmd_name) or do {
-    CliApp->usage(error => "Unknown command: '$cmd_name'\n");
+my $cmd = RepoLocator->get_command($cmd_name) or do {
+    RepoLocator->usage(error => "Unknown command: '$cmd_name'\n");
     exit 1;
 };
 if (scalar(grep { $_->{required} } @{ $cmd->{args} }) > scalar(@ARGV_PROCESSED)) {
@@ -31,9 +33,5 @@ if (scalar(grep { $_->{required} } @{ $cmd->{args} }) > scalar(@ARGV_PROCESSED))
     __PACKAGE__->usage_cmd_opt($cmd);
     exit 1;
 }
-my $self = CliApp->new(
-    subcommand => $cmd_name,
-    args => \@ARGV_PROCESSED,
-    opts => $cli_config
-);
+my $self = RepoLocator->new(\@ARGV_PROCESSED, $cli_config);
 $cmd->{do}->($self);

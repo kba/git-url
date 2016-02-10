@@ -1,7 +1,7 @@
-package CliApp::Command;
+package RepoLocator::Command;
 use strict;
 use warnings;
-use parent 'CliApp::SelfDocumenting';
+use parent 'RepoLocator::Documenting';
 
 my @_required_attrs = qw(name synopsis tag do);
 my @_known_attrs    = qw(name synopsis tag do args long_desc);
@@ -52,7 +52,7 @@ sub print_usage
 
 sub to_man
 {
-    my $self = CliApp->get_command($_);
+    my $self = RepoLocator->get_command($_);
     my $out = '';
     $out .= "\n";
     $out .= sprintf('## %s %s',

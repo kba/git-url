@@ -1,10 +1,10 @@
-package CliApp::Config::Option;
+package RepoLocator::Option;
 use strict;
 use warnings;
-use parent 'CliApp::SelfDocumenting';
+use parent 'RepoLocator::Documenting';
 
 my @_required_attrs = qw(name synopsis usage tag default);
-my @_known_attrs    = qw(name synopsis usage tag default long_desc env man_usage ref);
+my @_known_attrs    = qw(name synopsis usage tag default long_desc env csv man_usage);
 
 sub new
 {

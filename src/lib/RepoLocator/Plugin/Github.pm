@@ -1,7 +1,7 @@
-package CliApp::Plugin::Github;
+package RepoLocator::Plugin::Github;
 use strict;
 use warnings;
-use parent 'CliApp::Plugin';
+use parent 'RepoLocator::Plugin';
 
 my @_hosts = qw(github.com);
 
@@ -14,7 +14,8 @@ sub new {
 
 sub add_options
 {
-    CliApp::Config->add_option(
+    my ($cls, $parent) = @_;
+    $parent->add_option(
         name => 'github_api',
         usage => '--github_api=<API URL>',
         synopsis  => 'Base URL of the Github API to use.',
@@ -22,7 +23,7 @@ sub add_options
         default => 'https://api.github.com',
         tag     => 'github',
     );
-    CliApp::Config->add_option(
+    $parent->add_option(
         name => 'github_user',
         usage => '--github-user=<user name>',
         synopsis  => 'Your github user name.',
@@ -30,7 +31,7 @@ sub add_options
         default   => $ENV{GITHUB_USER},
         tag       => 'github',
     );
-    CliApp::Config->add_option(
+    $parent->add_option(
         name => 'github_token',
         usage => '--github_token=<token>',
         synopsis  => 'Your private github token.',

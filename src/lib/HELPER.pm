@@ -158,10 +158,8 @@ sub human_readable_default
     return !defined $val
       ? 'NONE'
       : ref $val ? ref $val eq 'ARRAY'
-          ? sprintf("%s", join(",", @{$val}))
-          : ref $val eq 'HASH'
-            ? sprintf("%s", join(',', map {join ':', $_, $val->{$_}} sort keys %{$val}))
-            : HELPER::log_die 'Unsupported ref type ' . ref $val
+          ? sprintf("[%s]", join(",", @{$val}))
+          : HELPER::log_die 'Unsupported ref type ' . ref $val
       : $val =~ /^1$/mx ? 'true'
       : $val =~ /^0$/mx ? 'false'
       :                 sprintf('"%s"', $val);

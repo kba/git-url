@@ -1,4 +1,4 @@
-package CliApp::SelfDocumenting ;
+package RepoLocator::Documenting;
 use strict;
 use warnings;
 use HELPER;
@@ -11,6 +11,7 @@ sub new {
     HELPER::validate_required_methods($cls, qw(print_usage print_help));
     return bless \%_self, $cls;
 }
+
 
 sub print_help
 {
