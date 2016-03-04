@@ -75,6 +75,7 @@ sub create_repo
         'curl',
         '-i',
         '-s',
+        '-L',
         '-H', join(':', 'PRIVATE-TOKEN', $token),
         '-X', 'POST',
         '-F', join('=', 'name',          $parent->{repo_name}),
