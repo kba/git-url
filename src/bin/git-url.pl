@@ -10,9 +10,8 @@ use RepoLocator;
 
 my @ARGV_PROCESSED;
 my $cli_config = {};
-my $in_args    = 0;
 while (my $arg = shift(@ARGV)) {
-    if ($arg =~ '^-' && !$in_args) {
+    if ($arg =~ '^-') {
         $arg =~ s/^-*//mx;
         my ($k, $v) = split('=', $arg);
         $v //= 1;
@@ -23,7 +22,6 @@ while (my $arg = shift(@ARGV)) {
         $v =~ s/~/$ENV{HOME}/mx;
         $cli_config->{$k} = $v;
     } else {
-        $in_args = 1;
         push @ARGV_PROCESSED, $arg;
     }
 }
