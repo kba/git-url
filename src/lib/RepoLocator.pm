@@ -395,6 +395,7 @@ sub _clone_repo
     my $repoDir = join('/', $ownerDir, $self->{repo_name});
     my $cloneCmd = $self->_clone_command();
     if (!-d $repoDir) {
+        HELPER::log_info("No local repository found, trying to clone");
         my $output = HELPER::_system($cloneCmd . ' 2>&1');
         if ($? > 0) {
             if ($self->{config}->{create}) {
@@ -440,7 +441,7 @@ sub new
     $self->{args}   = $_args;
     $self->{config} = $self->_load_config($cli_config);
     for my $key ('create', 'clone', 'fork') {
-        if ($key eq 'create' && $self->{config}->{$key} && $self->{config}->{$key} == 1) {
+        if ($key eq 'create' && $self->{config}->{$key}) {
             $self->{config}->{$key} = $self->{config}->{clone};
         }
         if (   $key eq 'fork'
@@ -581,13 +582,13 @@ sub setup_options {
     __PACKAGE__->add_option(
         name => 'loglevel',
         env       => 'LOGLEVEL',
-        usage => '--debug[=trace|debug|info|error]',
+        usage => '--loglevel[=trace|debug|info|error]',
         synopsis  => 'Log level',
-        man_usage => '--debug[=*LEVEL*]',
+        man_usage => '--loglevel[=*LEVEL*]',
         long_desc  => HELPER::unindent(
             12, q(
             Specify logging level. Can be one of `trace`, `debug`, `info`
-                or `error`. If no level is specified, defaults to `debug`. If
+            or `error`. If no level is specified, defaults to `debug`. If
             the option is omitted, only errors will be logged.
             )
         ),
