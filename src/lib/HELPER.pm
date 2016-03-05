@@ -16,7 +16,8 @@ our $LAST_COMMIT = "__LAST_COMMIT__";
 # Logging
 #
 #---------
-our $LOGLEVEL    = 0;
+our $LOGLEVEL = 0;
+our $PROMPT   = 0;
 
 our $log_levels = {
     'trace' => 3,
@@ -89,7 +90,12 @@ sub _chdir
 sub _system
 {
     my $cmd = shift;
-    log_debug("$cmd");
+    if ($_[0]) {
+        printf("About to execute '%s'\n<Enter> to continue, <Ctrl-C> to stop\n");
+        <>;
+    } else {
+        log_debug("$cmd");
+    }
     return system($cmd);
 }
 

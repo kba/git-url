@@ -144,6 +144,8 @@ sub _load_config
 
     # set log level
     $HELPER::LOGLEVEL = $HELPER::log_levels->{ $config->{loglevel} };
+    # set prompt behavior
+    $HELPER::PROMPT = $config->{prompt};
 
     # make sure base_dir exists
     HELPER::_mkdirp($config->{base_dir});
@@ -209,10 +211,10 @@ sub _parse_filename
 
     # split path into filename:line:column
     ($path, $self->{line}, $self->{column}) = split(':', $path);
-    if (!-e $path) {
-        HELPER::log_info("No such file/directory: $path");
-        HELPER::log_info(sprintf("Interpreting '%s' as '%s' shortcut", $path, $self->{config}->{clone}));
-        return $self->_parse_url($self->get_plugin($self->{config}->{clone})->to_url($self, $path));
+    if (! -e $path) {
+        HELPER::log_debug("No such file/directory: $path");
+        HELPER::log_info("Interpreting '%s' as '%s' URL", $path, $self->{config}->{platform});
+        return $self->_parse_url($self->get_plugin($self->{config}->{platform})->to_url($self, $path));
     }
     $path = File::Spec->rel2abs($path);
     my $dir = HELPER::_git_dir_for_filename($path);
@@ -349,10 +351,10 @@ sub _create_repo
 {
     my ($self) = @_;
     HELPER::require_location($self, 'host', 'owner', 'repo_name');
-    if ($self->get_plugin($self->{config}->{create})) {
-        $self->get_plugin($self->{config}->{create})->create_repo($self);
-    }
-    else {
+    HELPER::log_info("Creating repo %s/%s/%s", $self->{host}, $self->{owner}, $self->{repo_name});
+    if ($self->get_plugin($self->{config}->{platform})) {
+        $self->get_plugin($self->{config}->{platform})->create_repo($self);
+    } else {
         HELPER::log_die(
             sprintf "Creating repos only supported for [%s] currently",
             join(', ', $self->list_plugins()));
@@ -365,49 +367,62 @@ sub _fork_repo
 {
     my ($self) = @_;
     HELPER::require_location($self, 'host', 'owner', 'repo_name');
+    HELPER::log_info("Forking as %s@%s", $self->{owner}, $self->{host});
+    # TODO proper check
     if ($self->get_plugin($self->{host})) {
         $self->get_plugin($self->{host})->fork_repo($self);
-    }
-    else {
+    } else {
         HELPER::log_die("Forking only supported for Github and Gitlab currently.");
     }
     $self->_reset_urls();
     return;
 }
 
+sub _obtain_repo
+{
+    my ($self) = @_;
+    HELPER::require_location($self, 'host', 'owner', 'repo_name');
+    if ($self->{path_to_repo} && !$self->{config}->{ignore_existing}) {
+        return 1;
+    }
+    if ($self->{config}->{create}) {
+        $self->_create_repo();
+    } elsif ($self->{config}->{fork}) {
+        $self->_fork_repo();
+    }
+    if ($self->{config}->{clone}) {
+        $self->_clone_repo();
+    }
+    unless ($self->{path_to_repo}) {
+        HELPER::log_die("No local repository found.");
+    }
+}
+
 sub _clone_repo
 {
     my ($self) = @_;
     HELPER::require_location($self, 'host', 'owner', 'repo_name');
-    if ($self->{path_to_repo} && !$self->{config}->{no_local}) {
-        HELPER::log_info(
-            sprintf(
-                "We already have a path to this one (%s), not cloning to base_dir",
-                $self->{path_to_repo}));
-        return;
-    }
-    if ($self->{config}->{fork}) {
-        $self->_fork_repo();
-    }
+    # if ($self->{path_to_repo} && !$self->{config}->{ignore_existing}) {
+    #     HELPER::log_info(
+    #         sprintf("We already have a path to this one (%s), not cloning to base_dir",
+    #             $self->{path_to_repo}));
+    # }
+    # if ($self->{config}->{fork}) {
+    #     $self->_fork_repo();
+    # }
     my $ownerDir = join('/', $self->{config}->{base_dir}, $self->{host}, $self->{owner});
     HELPER::_mkdirp($ownerDir);
     HELPER::_chdir($ownerDir);
     my $repoDir = join('/', $ownerDir, $self->{repo_name});
     my $cloneCmd = $self->_clone_command();
-    if (!-d $repoDir) {
-        HELPER::log_info("No local repository found, trying to clone");
-        my $output = HELPER::_system($cloneCmd . ' 2>&1');
-        if ($? > 0) {
-            if ($self->{config}->{create}) {
-                $self->_create_repo();
-                $self->_clone_repo();
-            }
-            else {
-                HELPER::log_die("'$cloneCmd' failed with '$?': " . $output);
-            }
+    HELPER::log_info(sprintf "Clone '%s' to '%s'.", $self->{clone_url}, $repoDir);
+    my $output = HELPER::_system($cloneCmd . ' 2>&1');
+    if ($? > 0) {
+        unless ($self->{config}->{create}) {
+            HELPER::log_die("'$cloneCmd' failed with '$?':\n " . $output);
         }
     }
-    if (!-d $repoDir) {
+    if (! -d $repoDir) {
         carp "'$cloneCmd' failed silently for " . Dumper($self->{url});
         return;
     }
@@ -420,7 +435,7 @@ sub _reset_urls
     my $self = shift;
     $self->_set_browse_url();
     $self->_set_clone_url();
-    unless ($self->{config}->{no_local}) {
+    unless ($self->{config}->{ignore_existing}) {
         $self->_find_in_repo_dirs();
     }
     return;
@@ -440,36 +455,26 @@ sub new
 
     $self->{args}   = $_args;
     $self->{config} = $self->_load_config($cli_config);
-    for my $key ('create', 'clone', 'fork') {
-        if ($key eq 'create' && $self->{config}->{$key}) {
-            $self->{config}->{$key} = $self->{config}->{clone};
-        }
-        if (   $key eq 'fork'
-            && $self->{config}->{$key}
-            && $self->{config}->{fork} ne $self->{config}->{clone})
-        {
-            HELPER::log_die(
-                "Can only fork within a service. Conflicting clone<->fork: ",
-                join(
-                    '<->',
-                    $self->{config}->{clone},
-                    $self->{config}->{fork}));
-        }
-        my $val = $self->{config}->{$key};
-        if ($val && !$self->get_plugin($val)) {
-            HELPER::log_die(
-                sprintf(
-                    "Config: '%s': invalid value '%s'. Allowed: [%s]",
-                    $key, $val, join(', ', $self->list_plugins())));
-        }
+
+    # sanity checks
+    if ($self->{config}->{fork}) {
+        HELPER::log_debug("--fork implies --clone");
+        $self->{config}->{clone} = 1;
+    }
+    if ($self->{config}->{create} && $self->{config}->{fork}) {
+        HELPER::log_die("--create conflicts with --fork");
+    }
+    if ($self->{config}->{platform} && ! $self->get_plugin($self->{config}->{platform})) {
+        HELPER::log_die(
+            sprintf("Config: No plugin supports platform '%s'. Supported: [%s]",
+                $self->config->{platform}, join(', ', $self->list_plugins())));
     }
     $self->{path_within_repo} = '.';
-    $self->{branch}           = 'master';
+    $self->{branch}           = 'master'; # TODO
     if ($self->{args}->[0]) {
         if ($self->{args}->[0] =~ /^(https?:|git@)/mx) {
             $self->_parse_url($self->{args}->[0]);
-        }
-        else {
+        } else {
             $self->_parse_filename($self->{args}->[0]);
         }
         $self->_reset_urls();
@@ -582,9 +587,9 @@ sub setup_options {
     __PACKAGE__->add_option(
         name => 'loglevel',
         env       => 'LOGLEVEL',
-        usage => '--loglevel[=trace|debug|info|error]',
+        usage => '--loglevel=<trace|debug|info|error>',
         synopsis  => 'Log level',
-        man_usage => '--loglevel[=*LEVEL*]',
+        man_usage => '--loglevel=[*LEVEL*]',
         long_desc  => HELPER::unindent(
             12, q(
             Specify logging level. Can be one of `trace`, `debug`, `info`
@@ -618,37 +623,51 @@ sub setup_options {
         tag => 'prefs',
     );
     __PACKAGE__->add_option(
-        name => 'fork',
-        synopsis  => 'Whether to fork the repository before cloning.',
-        usage => '--fork',
-        default   => 0,
+        name => 'clone',
+        synopsis  => 'Whether to clone the repo locally.',
+        usage => '--[no-]clone',
+        default   => 1,
         tag       => 'common',
     );
     __PACKAGE__->add_option(
-        name => 'clone',
-        synopsis  => 'Clone repo from this service.',
-        usage => '--clone',
-        default   => 'github.com',
+        name => 'fork',
+        synopsis  => 'Whether to fork the repository before cloning.',
+        usage => '--[no-]fork',
+        default   => 0,
         tag       => 'common',
     );
     __PACKAGE__->add_option(
         name => 'create',
         synopsis  => 'Create a new repo if it could not be found',
-        usage => '--create',
+        usage => '--[no-]create',
         default   => 0,
+        tag       => 'common',
+    );
+    __PACKAGE__->add_option(
+        name => 'platform',
+        synopsis  => 'Use this platform as a fallback for non-absolute URI.',
+        usage => '--platform=<plugin>',
+        default   => 'github.com',
         tag       => 'common',
     );
     __PACKAGE__->add_option(
         name => 'create_private',
         synopsis  => 'If a new repository is created, it should be non-public.',
-        usage => '--create-private=<0|1>',
+        usage => '--[no-]create-private',
         default   => 0,
         tag       => 'common',
     );
     __PACKAGE__->add_option(
-        name => 'no_local',
+        name => 'prompt',
+        synopsis  => "Prompt before executing system commands.",
+        usage => '--[no-]prompt',
+        default   => 0,
+        tag       => 'common',
+    );
+    __PACKAGE__->add_option(
+        name => 'ignore_existing',
         synopsis  => "Don't look for the repo in the directories",
-        usage => '--no-local',
+        usage => '--[no-]ignore-existing',
         default   => 0,
         tag       => 'common',
     );
@@ -684,7 +703,7 @@ sub setup_commands {
         tag => 'common',
         do  => sub {
             my ($self) = @_;
-            $self->_clone_repo();
+            $self->_obtain_repo();
             HELPER::require_location( $self, 'path_to_repo' );
             HELPER::_chdir $self->{path_to_repo};
             HELPER::_system $self->_edit_command();
@@ -707,7 +726,7 @@ sub setup_commands {
         tag      => 'common',
         do       => sub {
             my ($self) = @_;
-            $self->_clone_repo();
+            $self->_obtain_repo();
             HELPER::require_location($self, 'path_to_repo');
             HELPER::_chdir $self->{path_to_repo};
             HELPER::_system $self->{config}->{shell};
@@ -732,7 +751,7 @@ sub setup_commands {
             }
             my ($session) = grep {/^$needle/mx} split("\n", HELPER::_qx("tmux ls -F '#{session_name}'"));
             if (!$session) {
-                $self->_clone_repo();
+                $self->_obtain_repo();
                 HELPER::require_location($self, 'path_to_repo');
                 HELPER::_chdir $self->{path_to_repo};
                 $session = $self->{repo_name};

@@ -15,9 +15,14 @@ while (my $arg = shift(@ARGV)) {
     if ($arg =~ '^-' && !$in_args) {
         $arg =~ s/^-*//mx;
         my ($k, $v) = split('=', $arg);
-        $cli_config->{$k} = $v // 1;
-    }
-    else {
+        $v //= 1;
+        if ($k =~ /^no-/) {
+            $k =~ s/^no-//;
+            $v = undef;
+        }
+        $v =~ s/~/$ENV{HOME}/mx;
+        $cli_config->{$k} = $v;
+    } else {
         $in_args = 1;
         push @ARGV_PROCESSED, $arg;
     }
