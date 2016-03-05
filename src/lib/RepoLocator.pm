@@ -739,26 +739,34 @@ sub setup_commands {
         tag      => 'common',
         do       => sub {
             my ($self) = @_;
+            my @sessions = split /\n/mx, HELPER::_qx("tmux ls -F '#{session_name}'");;
             my $needle = $self->{args}->[0];
             unless ($needle) {
                 print colored("Current tmux sessions:\n", "bold cyan");
-                my $output = HELPER::_qx("tmux ls -F '#{session_name}'");
-                chomp $output;
-                for (split /\n/mx, $output) {
-                    print "  * $_\n";
+                my $i = 0;
+                for (@sessions) {
+                    printf "%2d - %s\n", ++$i, $_;
                 }
-                return;
-            }
-            my ($session) = grep {/^$needle/mx} split("\n", HELPER::_qx("tmux ls -F '#{session_name}'"));
-            if (!$session) {
-                $self->_obtain_repo();
-                HELPER::require_location($self, 'path_to_repo');
-                HELPER::_chdir $self->{path_to_repo};
-                $session = $self->{repo_name};
-            }
-            HELPER::_system("tmux attach -d -t" . $session);
-            if ($?) {
-                HELPER::_system("tmux new -s " . $session);
+                if ($self->{config}->{prompt}) {
+                    printf "[1-%d] > ", scalar(@sessions);
+                    my $choice = <>;
+                    $choice =~ s/[^0-9]//g;
+                    if ($choice ne '' && $choice > 0 && $choice <= scalar @sessions) {
+                        HELPER::_system("tmux attach -d -t" . $sessions[$choice-1]);
+                    }
+                }
+            } else {
+                my ($session) = grep {/^$needle/mx} @sessions;
+                if (!$session) {
+                    $self->_obtain_repo();
+                    HELPER::require_location($self, 'path_to_repo');
+                    HELPER::_chdir $self->{path_to_repo};
+                    $session = $self->{repo_name};
+                }
+                HELPER::_system("tmux attach -d -t" . $session);
+                if ($?) {
+                    HELPER::_system("tmux new -s " . $session);
+                }
             }
         }
     );
