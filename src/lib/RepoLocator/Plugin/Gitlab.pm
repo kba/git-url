@@ -82,8 +82,7 @@ sub create_repo
         $api_url,
     );
     my $resp = HELPER::_qx($forkCmd);
-
-    if ($resp !~ /201 Created/mx) {
+    if ($resp !~ '201 Created') {
         HELPER::log_die("Failed to create the repo: $resp");
     }
     $parent->{owner} = $user;
