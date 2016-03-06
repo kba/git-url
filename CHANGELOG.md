@@ -7,9 +7,12 @@ This project adheres to [Semantic Versioning](http://semver.org/).
 ## [unreleased]
 Added
 * Basic Support for Bitbucket
+* zsh completion
+* list_repos command
 Changed
 * Auto-generate config.ini
 Fixed
+* Missing required args errro
 Removed
 
 <!-- newest-changes -->
