@@ -501,6 +501,7 @@ sub usage
 {
     my ($cls, %args) = @_;
     $args{tags} ||= [ $cls->list_tags ];
+    $args{cmd} ||= undef;
     if ($args{error}) {
         print HELPER::style('error', "\nError: %s\n\n", $args{error});
     }
@@ -522,6 +523,9 @@ sub usage
 
     print HELPER::style('heading', "Subcommands:\n");
     for my $cmd_name ($cls->list_commands()) {
+        if ($args{cmd} && $cmd_name ne $args{cmd}) {
+            next;
+        }
         my $cmd = $cls->get_command($cmd_name);
         $cmd_name =~ s/_/-/gmx;
         print "\t";
@@ -699,6 +703,54 @@ sub setup_commands {
     # add commands
     #
     __PACKAGE__->add_command(
+        name     => 'zsh_complete',
+        synopsis => 'Output information suitable for a zsh completion script',
+        args     => [{ name => 'group', synopsis => 'What to complete', required => 0 } ],
+        tag      => 'common',
+        do       => sub {
+            my ($self) = @_;
+            my $group = $self->{args}->[0];
+            my @complete;
+            if ($group eq 'repos') {
+                my @alldirs = @{$self->{config}->{repo_dirs}};
+                push(@alldirs, $self->{config}->{base_dir});
+                for my $dir (@alldirs) {
+                    for my $host (@{RepoLocator->list_plugins}) {
+                        continue unless (-d "$dir/$host");
+                        my $_out = qx(find "$dir/$host" -maxdepth 2 -mindepth 2 -type d);
+                        chomp $_out;
+                        for (split("\n", $_out)) {
+                            s,^$dir,,;
+                            s,^(.*?)/([^/]*)/([^/]*)/([^/]*)$,$4:$2/$3/$4,gm;
+                            push @complete, $_;
+                        }
+                    }
+                }
+            } elsif ($group eq 'option_names') {
+                push @complete, RepoLocator->list_options();
+            } elsif ($group eq 'options') {
+                for my $opt_name (RepoLocator->list_options()) {
+                    my $opt = RepoLocator->get_option($opt_name);
+                    my $x = $opt->to_zsh();
+                    chomp $x;
+                    push @complete, split("\n", $x);
+                }
+            } elsif ($group eq 'command_names') {
+                push @complete, RepoLocator->list_commands();
+            } elsif ($group eq 'commands') {
+                for my $cmd_name (RepoLocator->list_commands()) {
+                    my $cmd = RepoLocator->get_command($cmd_name);
+                    my $x = $cmd->to_zsh();
+                    chomp $x;
+                    push @complete, split("\n", $x);
+                }
+            } elsif ($group eq 'zsh-complete') {
+                push @complete, qw(options option_names commands command_names repos zsh-complete);
+            }
+            print join("\n", @complete);
+        }
+    );
+    __PACKAGE__->add_command(
         name      => 'edit',
         synopsis  => 'Edit file at <location>',
         long_desc => HELPER::unindent(
@@ -838,7 +890,8 @@ sub setup_commands {
         do       => sub {
             my ($self) = @_;
             $_ = $self->{args}->[0];
-            if ($_ && /^-/mx) {
+            if (/^o$/) {
+                $_ = $self->{args}->[1];
                 s/^-*//mx;
                 s/-/_/gmx;
                 my $opt = __PACKAGE__->get_option($_);
@@ -846,7 +899,7 @@ sub setup_commands {
                     $opt->print_help()
                 }
                 else {
-                    $self->usage(error => "No such option: " . $self->{args}->[0]);
+                    $self->usage(error => "No such option: " . $_, tags=>['common']);
                 }
             }
             elsif ($_) {
@@ -856,7 +909,7 @@ sub setup_commands {
                     $cmd->print_help()
                 }
                 else {
-                    $self->usage(error => "No such command " . $self->{args}->[0]);
+                    $self->usage(error => "No such command " . $_);
                 }
             }
             else {

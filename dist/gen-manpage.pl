@@ -14,7 +14,7 @@ use lib dirname($0) . '/../src/lib';
 use RepoLocator;
 use HELPER;
 
-my @modes = qw(man ini zsh);
+my @modes = qw(man ini);
 my %tokens = map { $_ => {} } @modes;
 my $mode = $ARGV[0];
 unless ($mode) {

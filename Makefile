@@ -54,10 +54,6 @@ man/%.1: src/man/%.1.md bin has-pandoc dist/gen-manpage.pl
 	@$(MKDIR) man
 	cat $< | perl dist/gen-manpage.pl man | $(PANDOC) -o $@
 
-# zsh completion
-_$(SCRIPT_NAME): src/zsh/_$(SCRIPT_NAME) has-pandoc dist/gen-manpage.pl
-	perl dist/gen-manpage.pl zsh < $< > $@
-
 # config.ini
 config.ini: src/config.ini lib bin dist/gen-manpage.pl
 	cat $< | perl dist/gen-manpage.pl ini > $@
@@ -67,7 +63,6 @@ clean:
 	@$(RM) lib
 	@$(RM) bin
 	@$(RM) man
-	@$(RM) _$(SCRIPT_NAME)
 	@$(RM) config.ini
 
 # Check for installed programs
@@ -81,21 +76,18 @@ check: has-perl has-git has-curl
 #
 # Install
 #
-install: lib bin man
-	@$(MKDIR) $(BINDIR) $(LIBDIR) $(MANDIR)
+install: lib bin man src/zsh/_git-url
+	@$(MKDIR) $(BINDIR) $(LIBDIR) $(MANDIR) $(ZSHDIR)
 	@$(CP) -t $(LIBDIR) bin lib man README.md
 	@$(LN) -t $(BINDIR) $(LIBDIR)/bin/$(SCRIPT_NAME)
 	@$(LN) -t $(MANDIR) $(LIBDIR)/man/$(SCRIPT_NAME).1
+	@$(CP) -t $(ZSHDIR) src/zsh/_$(SCRIPT_NAME)
 
 install-config: config.ini
 	@$(MKDIR) $(CONFDIR)
 	@$(CP_SECURE) -t $(CONFDIR) config.ini
 
-install-zsh: _$(SCRIPT_NAME)
-	@$(MKDIR) $(ZSHDIR)
-	@$(CP) -t $(ZSHDIR) _$(SCRIPT_NAME)
-
-install-all: install install-config install-zsh
+install-all: install install-config
 
 #
 # Uninstall
@@ -104,14 +96,13 @@ uninstall:
 	@$(RM) $(LIBDIR)
 	@$(RM) $(BINDIR)/$(SCRIPT_NAME)
 	@$(RM) $(MANDIR)/$(SCRIPT_NAME).1
+	@$(RM) $(ZSHDIR)/_$(SCRIPT_NAME)
 
 uninstall-config:
 	@echo "Ctrl-C to keep, enter to delete $(CONFDIR)?" && read x && $(RM) $(CONFDIR)
 
-uninstall-zsh: _$(SCRIPT_NAME)
-	@$(RM) $(ZSHDIR)/_$(SCRIPT_NAME)
 
-uninstall-all: uninstall uninstall-config uninstall-zsh
+uninstall-all: uninstall uninstall-config
 
 #
 # Home install / uninstall / link

@@ -1,32 +1,58 @@
 #compdef git-url
 
-local context line curontext
+local context line curcontext
 typeset -A opt_args
 
-_git-url_commands() {
-    local commands; commands=(
-__COMMANDS__
-    )
-    _describe -t commands 'command' commands && ret=0
+function __tmux-sessions() {
+    local -a sessions
+    sessions=( ${${(f)"$(command tmux 2> /dev/null list-sessions)"}/:[ $'\t']##/:} )
+    _describe -t sessions 'sessions' sessions "$@"
+}
+
+function __git-url-complete() {
+    local group_name
+    group_name="$@[-1]"
+    shift -p
+    local -a xyz
+    xyz=(${(f)"$(git-url zsh-complete $group_name)"})
+    _describe -t "$group_name" "$group_name" xyz "$@"
 }
 
 _arguments -C \
-__OPTIONS__  \
-'1: :_git-url_commands' '*:args:->args' && ret=0
-
-__local_repos () {
-  local repos expl
-  repos=(${(f)"$(_call_program remotes git-url tree)"})
-  _wanted repos expl repo compadd $* - $repos
-}
+    ${(f)"$(git-url zsh-complete options)"} \
+    "1:Command:__git-url-complete commands" \
+    "2:Argument:->args" \
+&& ret=0
 
 case $state in
     (args)
-        local expl
-        _description repos expl 'repo'
-        __local_repos $expl && ret=0
+        case $line[1] in
+            (tmux)
+                _alternative : \
+                    "tmux sessions:Active tmux sessions:__tmux-sessions" \
+                    "local repos:Local Repositories:__git-url-complete repos" \
+                    "urls:URLs:_urls" \
+                    && ret=0
+                ;;
+            (help)
+                _alternative : \
+                    "option_names:Help on options:__git-url-complete option_names" \
+                    "commands:Help on commands:__git-url-complete command_names" \
+                    && ret=0
+                ;;
+            (zsh-complete)
+                _alternative : \
+                    "zsh-complete:Completion groups:__git-url-complete zsh-complete" \
+                    && ret=0
+                ;;
+            (*)
+                _alternative : \
+                    "local repos:Local Repositories:__git-url-complete repos" \
+                    "urls:URLs:_urls" \
+                    && ret=0
+                ;;
+        esac
     ;;
 esac
 
-return 1
 # vim:ft=zsh:

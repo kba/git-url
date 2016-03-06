@@ -17,7 +17,7 @@ sub new
 
 sub print_help
 {
-    my ($self) = @_;
+    my ($self) = shift @_;
     $self->SUPER::print_help(@_);
 
     my @args = @{$self->{args}};
@@ -52,13 +52,15 @@ sub print_usage
 
 sub to_zsh
 {
-    my $self = RepoLocator->get_command($_);
-    return sprintf "  '%s:%s'\n", $self->{name}, $self->{synopsis};
+    my $self = shift;
+    my $name = $self->{name};
+    $name =~ s/_/-/g;
+    return sprintf "%s:%s\n", $name, $self->{synopsis};
 }
 
 sub to_man
 {
-    my $self = RepoLocator->get_command($_);
+    my $self = shift;
     my $out = '';
     $out .= "\n";
     $out .= sprintf('## %s %s',
