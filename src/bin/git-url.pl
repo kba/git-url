@@ -7,6 +7,7 @@ use File::Basename qw(dirname);
 
 use lib realpath(dirname(realpath $0) . '/../lib');
 use RepoLocator;
+use HELPER;
 
 my @ARGV_PROCESSED;
 my $cli_config = {};
@@ -28,7 +29,9 @@ while (my $arg = shift(@ARGV)) {
                 last;
             }
         }
-        $v =~ s/~/$ENV{HOME}/mx;
+        if ($v) {
+            $v =~ s/~/$ENV{HOME}/mx;
+        }
         $cli_config->{$k} = $v;
     } else {
         push @ARGV_PROCESSED, $arg;
@@ -41,8 +44,7 @@ my $cmd = RepoLocator->get_command($cmd_name) or do {
     exit 1;
 };
 if (scalar(grep { $_->{required} } @{ $cmd->{args} }) > scalar(@ARGV_PROCESSED)) {
-    print colored("Error: ", 'bold red') . "Not enough arguments\n\n";
-    __PACKAGE__->usage_cmd_opt($cmd);
+    RepoLocator->usage(error => "Not enough arguments for $cmd_name", tags => ['common'], cmd => $cmd_name);
     exit 1;
 }
 my $self = RepoLocator->new(\@ARGV_PROCESSED, $cli_config);
