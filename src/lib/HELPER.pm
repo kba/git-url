@@ -18,6 +18,7 @@ our $LAST_COMMIT = "__LAST_COMMIT__";
 #---------
 our $LOGLEVEL = 0;
 our $PROMPT   = 0;
+our $STYLING_ENABLED    = 1;
 
 our $log_levels = {
     'trace' => 3,
@@ -185,10 +186,14 @@ our $styles = {
 sub style
 {
     my ($style, $str, @args) = @_;
-    unless ($styles->{$style}) {
-        log_die("Unknown style '$style' at " . join(' ', caller));
+    my $out = sprintf($str, @args);
+    if ($STYLING_ENABLED) {
+        unless ($styles->{$style}) {
+            log_die("Unknown style '$style' at " . join(' ', caller));
+        }
+        $out = colored($out, $styles->{$style});
     }
-    return colored(sprintf($str, @args), $styles->{$style});
+    return $out;
 }
 
 #-------------

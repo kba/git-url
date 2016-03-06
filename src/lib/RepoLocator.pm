@@ -146,6 +146,8 @@ sub _load_config
     $HELPER::LOGLEVEL = $HELPER::log_levels->{ $config->{loglevel} };
     # set prompt behavior
     $HELPER::PROMPT = $config->{prompt};
+    # set styling behavior
+    $HELPER::STYLING_ENABLED = $config->{color};
 
     # make sure base_dir exists
     HELPER::_mkdirp($config->{base_dir});
@@ -547,6 +549,13 @@ sub setup_plugins {
 #
 sub setup_options {
     __PACKAGE__->add_option(
+        name     => 'color',
+        synopsis => 'Whether to use colors',
+        usage    => '--[no-]color',
+        default  => 1,
+        tag      => 'common',
+    );
+    __PACKAGE__->add_option(
         name     => 'base_dir',
         env      => 'GITDIR',
         synopsis => 'The base directory to clone repos to and look for them.',
@@ -730,7 +739,7 @@ sub setup_commands {
         }
     );
     __PACKAGE__->add_command(
-        name     => 'tree',
+        name     => 'list_repos',
         synopsis => 'List all local repositories',
         args     => [],
         tag      => 'common',
@@ -770,7 +779,7 @@ sub setup_commands {
             my @sessions = split /\n/mx, HELPER::_qx("tmux ls -F '#{session_name}'");;
             my $needle = $self->{args}->[0];
             unless ($needle) {
-                print colored("Current tmux sessions:\n", "bold cyan");
+                print HELPER::style("heading", "Current tmux sessions:\n");
                 my $i = 0;
                 for (@sessions) {
                     printf "%2d - %s\n", ++$i, $_;
@@ -861,12 +870,12 @@ sub setup_commands {
         tag      => 'common',
         do       => sub {
             my ( $self, $cli_config ) = @_;
-            print colored( $HELPER::SCRIPT_NAME, 'bold blue' );
-            print colored( " v$HELPER::VERSION\n", "bold green" );
-            print colored( 'Build date: ', 'white bold' );
+            print HELPER::style( 'heading', $HELPER::SCRIPT_NAME );
+            print HELPER::style( 'command', " v$HELPER::VERSION\n" );
+            print HELPER::style( 'arg', 'Build date: ' );
             print "$HELPER::BUILD_DATE\n";
-            print colored( 'Last commit: ', 'white bold' );
-            printf 'https://github.com/kba/%s/commit/%s\n', $HELPER::SCRIPT_NAME, $HELPER::LAST_COMMIT;
+            print HELPER::style( 'arg', 'Last commit: ' );
+            printf "https://github.com/kba/%s/commit/%s\n", $HELPER::SCRIPT_NAME, $HELPER::LAST_COMMIT;
         }
     );
     __PACKAGE__->add_command(
