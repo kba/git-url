@@ -335,6 +335,9 @@ sub _find_in_repo_dirs
             join('/', $self->{owner}, $self->{repo_name}),
             join('/', $self->{host}, $self->{owner}, $self->{repo_name}),
         );
+        for my $host (qw(github.com gitlab.com bitbucket.com)) {
+            push @candidates, join('/', $host, $self->{owner}, $self->{repo_name});
+        }
         for my $candidate (@candidates) {
             $candidate = "$dir/$candidate";
             HELPER::log_trace("Trying candidate $candidate");
@@ -382,6 +385,9 @@ sub _obtain_repo
 {
     my ($self) = @_;
     HELPER::require_location($self, 'host', 'owner', 'repo_name');
+    if (!$self->{path_to_repo}) {
+        $self->_find_in_repo_dirs();
+    }
     if ($self->{path_to_repo} && !$self->{config}->{ignore_existing}) {
         return 1;
     }
