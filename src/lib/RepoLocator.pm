@@ -541,26 +541,27 @@ sub setup_plugins {
 #
 sub setup_options {
     __PACKAGE__->add_option(
-        name => 'base_dir',
-        env       => 'GITDIR',
-        synopsis  => 'The base directory to clone repos to and look for them.',
-        usage     => '--base-dir=<path>',
-        default   => $ENV{GITDIR} || $ENV{HOME} . '/build',
-        tag       => 'prefs',
+        name     => 'base_dir',
+        env      => 'GITDIR',
+        synopsis => 'The base directory to clone repos to and look for them.',
+        usage    => '--base-dir=<path>',
+        default  => $ENV{GITDIR} || $ENV{HOME} . '/build',
+        tag      => 'prefs',
+    );
+    # TODO fix this
+    __PACKAGE__->add_option(
+        name     => 'repo_dirs',
+        csv      => 1,
+        usage    => '--repo-dirs=<comma separated dirs>',
+        synopsis => 'The directories to search for repositories.',
+        default  => $ENV{GITDIR_PATH} || [],
+        env      => 'GITDIR_PATH',
+        tag      => 'prefs',
     );
     __PACKAGE__->add_option(
-        name => 'repo_dirs',
-        csv     => 1,
-        usage => '--repo-dirs=<comma separated dirs>',
-        synopsis  => 'The directories to search for repositories.',
-        default   => $ENV{GITDIR_PATH} || [],
-        env       => 'GITDIR_PATH',
-        tag       => 'prefs',
-    );
-    __PACKAGE__->add_option(
-        name => 'editor',
+        name      => 'editor',
         synopsis  => 'The editor to open files with.',
-        usage => '--editor=<path to editor>',
+        usage     => '--editor=<path to editor>',
         default   => $ENV{EDITOR} || 'vim',
         env       => 'EDITOR',
         man_usage => '--editor=*BINARY*',
@@ -576,21 +577,22 @@ sub setup_options {
         tag       => 'prefs',
     );
     __PACKAGE__->add_option(
-        name => 'shell',
+        name      => 'shell',
         env       => 'SHELL',
-        usage => '--shell=<path to shell>',
+        usage     => '--shell=<path to shell>',
         man_usage => '--shell=*SHELL*',
         synopsis  => 'The shell to use',
         tag       => 'prefs',
         default   => $ENV{SHELL} || 'bash',
     );
     __PACKAGE__->add_option(
-        name => 'loglevel',
+        name      => 'loglevel',
+        shortcut  => { 'info' => 'info', 'debug' => 'debug', 'trace' => 'trace', 'error'=>'error' },
         env       => 'LOGLEVEL',
-        usage => '--loglevel=<trace|debug|info|error>',
+        usage     => '--loglevel=<trace|debug|info|error>',
         synopsis  => 'Log level',
         man_usage => '--loglevel=[*LEVEL*]',
-        long_desc  => HELPER::unindent(
+        long_desc => HELPER::unindent(
             12, q(
             Specify logging level. Can be one of `trace`, `debug`, `info`
             or `error`. If no level is specified, defaults to `debug`. If
@@ -601,11 +603,11 @@ sub setup_options {
         default => $ENV{LOGLEVEL} || 'error',
     );
     __PACKAGE__->add_option(
-        name => 'clone_opts',
+        name      => 'clone_opts',
         synopsis  => 'Additional arguments to pass to "git clone"',
-        usage => '--clone-opts=<arg1 arg2...>',
+        usage     => '--clone-opts=<arg1 arg2...>',
         default   => '--depth 1',
-        long_desc  => 'Additional command line arguments to pass to *git-clone(1)*',
+        long_desc => 'Additional command line arguments to pass to *git-clone(1)*',
         tag       => 'prefs',
     );
     __PACKAGE__->add_option(
@@ -623,46 +625,48 @@ sub setup_options {
         tag => 'prefs',
     );
     __PACKAGE__->add_option(
-        name => 'clone',
-        synopsis  => 'Whether to clone the repo locally.',
-        usage => '--[no-]clone',
-        default   => 1,
-        tag       => 'common',
+        name     => 'clone',
+        synopsis => 'Whether to clone the repo locally.',
+        usage    => '--[no-]clone',
+        default  => 1,
+        tag      => 'common',
     );
     __PACKAGE__->add_option(
-        name => 'fork',
-        synopsis  => 'Whether to fork the repository before cloning.',
-        usage => '--[no-]fork',
-        default   => 0,
-        tag       => 'common',
+        name     => 'fork',
+        synopsis => 'Whether to fork the repository before cloning.',
+        usage    => '--[no-]fork',
+        default  => 0,
+        tag      => 'common',
     );
     __PACKAGE__->add_option(
-        name => 'create',
-        synopsis  => 'Create a new repo if it could not be found',
-        usage => '--[no-]create',
-        default   => 0,
-        tag       => 'common',
+        name     => 'create',
+        synopsis => 'Create a new repo if it could not be found',
+        usage    => '--[no-]create',
+        default  => 0,
+        tag      => 'common',
     );
     __PACKAGE__->add_option(
-        name => 'platform',
-        synopsis  => 'Use this platform as a fallback for non-absolute URI.',
-        usage => '--platform=<plugin>',
-        default   => 'github.com',
-        tag       => 'common',
+        name     => 'platform',
+        shortcut => { 'gh' => 'github.com', 'gl' => 'gitlab.com', 'bb' => 'bitbucket.com' },
+        synopsis => 'Use this platform as a fallback for non-absolute URI.',
+        usage    => '--platform=<plugin>',
+        default  => 'github.com',
+        tag      => 'common',
     );
     __PACKAGE__->add_option(
-        name => 'create_private',
-        synopsis  => 'If a new repository is created, it should be non-public.',
-        usage => '--[no-]create-private',
-        default   => 0,
-        tag       => 'common',
+        name     => 'create_private',
+        synopsis => 'If a new repository is created, it should be non-public.',
+        usage    => '--[no-]create-private',
+        default  => 0,
+        tag      => 'common',
     );
     __PACKAGE__->add_option(
-        name => 'prompt',
-        synopsis  => "Prompt before executing system commands.",
-        usage => '--[no-]prompt',
-        default   => 0,
-        tag       => 'common',
+        name     => 'prompt',
+        shortcut => {p => 1},
+        synopsis => "Prompt before executing system commands.",
+        usage    => '--[no-]prompt',
+        default  => 0,
+        tag      => 'common',
     );
     __PACKAGE__->add_option(
         name => 'ignore_existing',
@@ -720,6 +724,24 @@ sub setup_commands {
         }
     );
     __PACKAGE__->add_command(
+        name     => 'tree',
+        synopsis => 'List all local repositories',
+        args     => [],
+        tag      => 'common',
+        do       => sub {
+            my ($self) = @_;
+            # TODO this should not be necessary
+            my @alldirs = @{$self->{config}->{repo_dirs}};
+            push(@alldirs, $self->{config}->{base_dir});
+            for my $dir (@alldirs) {
+                for my $host (@{RepoLocator->list_plugins}) {
+                    continue unless (-d "$dir/$host");
+                    system(qq{find "$dir/$host" -maxdepth 2 -mindepth 2 -type d|sed 's,.*/,,'|sort|uniq });
+                }
+            }
+        }
+    );
+    __PACKAGE__->add_command(
         name     => 'shell',
         synopsis => 'Open a shell in the local repository directory',
         args     => [ { name => 'location', synopsis => 'Location to edit', required => 1 } ],
@@ -735,7 +757,7 @@ sub setup_commands {
     __PACKAGE__->add_command(
         name     => 'tmux',
         synopsis => 'Attach to or create a tmux session named like the repo.',
-        args     => [ { name => 'session', synopsis => 'Session to open or none to list all', required => 0 } ],
+        args     => [ { name => 'session|location', synopsis => 'Session/URL/location to open or none to list all', required => 0 } ],
         tag      => 'common',
         do       => sub {
             my ($self) = @_;
@@ -748,7 +770,7 @@ sub setup_commands {
                     printf "%2d - %s\n", ++$i, $_;
                 }
                 if ($self->{config}->{prompt}) {
-                    printf "[1-%d] > ", scalar(@sessions);
+                    printf "\n[1-%d] > ", scalar(@sessions);
                     my $choice = <>;
                     $choice =~ s/[^0-9]//g;
                     if ($choice ne '' && $choice > 0 && $choice <= scalar @sessions) {
@@ -771,7 +793,7 @@ sub setup_commands {
         }
     );
     __PACKAGE__->add_command(
-        name     => 'show',
+        name     => 'path',
         synopsis => 'Show the path of the local repository for a URL',
         args     => [ { name => 'URL', synopsis => 'URL to show local path for', required => 1 } ],
         tag      => 'common',

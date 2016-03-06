@@ -19,6 +19,15 @@ while (my $arg = shift(@ARGV)) {
             $k =~ s/^no-//;
             $v = undef;
         }
+        OPTION_LOOP:
+        for (RepoLocator->list_options()) {
+            my $opt = RepoLocator->get_option($_);
+            if (exists $opt->{shortcut}->{$k}) {
+                $k = $opt->{name};
+                $v = $opt->{shortcut}->{$k};
+                last;
+            }
+        }
         $v =~ s/~/$ENV{HOME}/mx;
         $cli_config->{$k} = $v;
     } else {
