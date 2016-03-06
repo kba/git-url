@@ -1,0 +1,32 @@
+#compdef git-url
+
+local context line curontext
+typeset -A opt_args
+
+_git-url_commands() {
+    local commands; commands=(
+__COMMANDS__
+    )
+    _describe -t commands 'command' commands && ret=0
+}
+
+_arguments -C \
+__OPTIONS__  \
+'1: :_git-url_commands' '*:args:->args' && ret=0
+
+__local_repos () {
+  local repos expl
+  repos=(${(f)"$(_call_program remotes git-url tree)"})
+  _wanted repos expl repo compadd $* - $repos
+}
+
+case $state in
+    (args)
+        local expl
+        _description repos expl 'repo'
+        __local_repos $expl && ret=0
+    ;;
+esac
+
+return 1
+# vim:ft=zsh:

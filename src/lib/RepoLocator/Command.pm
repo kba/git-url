@@ -50,6 +50,12 @@ sub print_usage
     return;
 }
 
+sub to_zsh
+{
+    my $self = RepoLocator->get_command($_);
+    return sprintf "  '%s:%s'\n", $self->{name}, $self->{synopsis};
+}
+
 sub to_man
 {
     my $self = RepoLocator->get_command($_);

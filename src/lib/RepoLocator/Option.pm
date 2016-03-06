@@ -4,7 +4,7 @@ use warnings;
 use parent 'RepoLocator::Documenting';
 
 my @_required_attrs = qw(name synopsis usage tag default);
-my @_known_attrs    = qw(name synopsis usage tag default long_desc env csv man_usage);
+my @_known_attrs    = qw(name synopsis usage tag default long_desc env csv man_usage shortcut);
 
 sub new
 {
@@ -12,6 +12,7 @@ sub new
     HELPER::validate_required_args($cls, \@_required_attrs, %_self);
     HELPER::validate_known_args($cls, \@_known_attrs, %_self);
     $_self{man_usage} ||= $_self{usage};
+    $_self{shortcut} ||= {};
     return $cls->SUPER::new(%_self);
 }
 
@@ -44,6 +45,28 @@ EOMAN
         HELPER::human_readable_default($self->{default}),
         $desc
     );
+}
+
+# '--foo[bar]' \
+
+sub to_zsh
+{
+    my ($self) = shift;
+    my $name = $self->{name};
+    $name =~ s/_/-/g;
+    my $synopsis = $self->{synopsis};
+    $synopsis =~ s/"/\\"/g;
+    my $tpl = qq{    "--%s[%s]"\\\n};
+    my $out = sprintf($tpl, $name, $synopsis);
+    for my $shortcut (keys %{ $self->{shortcut} }) {
+        my $val = $self->{shortcut}->{$shortcut};
+        my $shortcut_tpl = $tpl;
+        if (length($shortcut) == 1) {
+            $shortcut_tpl =~ s/--/-/;
+        }
+        $out .= sprintf $shortcut_tpl, $shortcut, 'Same as --' . $name . '=' . $val;
+    }
+    return $out;
 }
 
 # ; base_dir: Base directory where projects are stored

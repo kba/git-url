@@ -5,6 +5,7 @@ PREFIX = $(DESTDIR)/usr/local
 BINDIR = $(PREFIX)/bin
 LIBDIR = $(PREFIX)/share/$(SCRIPT_NAME)
 MANDIR = $(PREFIX)/share/man/man1
+ZSHDIR = $(PREFIX)/share/zsh/site-functions
 CONFDIR = $(HOME)/.config/$(SCRIPT_NAME)
 
 RM = rm -rvf
@@ -53,8 +54,11 @@ man/%.1: src/man/%.1.md bin has-pandoc dist/gen-manpage.pl
 	@$(MKDIR) man
 	cat $< | perl dist/gen-manpage.pl man | $(PANDOC) -o $@
 
-# config.ini
+# zsh completion
+_$(SCRIPT_NAME): src/zsh/_$(SCRIPT_NAME) has-pandoc dist/gen-manpage.pl
+	perl dist/gen-manpage.pl zsh < $< > $@
 
+# config.ini
 config.ini: src/config.ini lib bin dist/gen-manpage.pl
 	cat $< | perl dist/gen-manpage.pl ini > $@
 
@@ -63,6 +67,7 @@ clean:
 	@$(RM) lib
 	@$(RM) bin
 	@$(RM) man
+	@$(RM) _$(SCRIPT_NAME)
 	@$(RM) config.ini
 
 # Check for installed programs
@@ -86,7 +91,11 @@ install-config: config.ini
 	@$(MKDIR) $(CONFDIR)
 	@$(CP_SECURE) -t $(CONFDIR) config.ini
 
-install-all: install install-config
+install-zsh: _$(SCRIPT_NAME)
+	@$(MKDIR) $(ZSHDIR)
+	@$(CP) -t $(ZSHDIR) _$(SCRIPT_NAME)
+
+install-all: install install-config install-zsh
 
 #
 # Uninstall
@@ -99,7 +108,10 @@ uninstall:
 uninstall-config:
 	@echo "Ctrl-C to keep, enter to delete $(CONFDIR)?" && read x && $(RM) $(CONFDIR)
 
-uninstall-all: uninstall uninstall-config
+uninstall-zsh: _$(SCRIPT_NAME)
+	@$(RM) $(ZSHDIR)/_$(SCRIPT_NAME)
+
+uninstall-all: uninstall uninstall-config uninstall-zsh
 
 #
 # Home install / uninstall / link
