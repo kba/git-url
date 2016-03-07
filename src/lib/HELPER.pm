@@ -168,7 +168,7 @@ sub human_readable_default
           ? sprintf("[%s]", join(",", @{$val}))
           : HELPER::log_die 'Unsupported ref type ' . ref $val
       : $val =~ /^1$/mx ? 'true'
-      : $val =~ /^0$/mx ? 'false'
+      : (! $val)        ? 'false'
       :                 sprintf('"%s"', $val);
 }
 
@@ -181,6 +181,9 @@ our $styles = {
     'script-name' => 'blue bold',
     'heading'     => 'underline',
     'error'       => 'bold red',
+    'false'       => 'red',
+    'true'        => 'green',
+    'string'      => 'yellow',
 };
 
 sub style

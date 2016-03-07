@@ -535,7 +535,9 @@ sub usage
 }
 
 #==================
+#
 # Initialize class
+#
 #==================
 
 #
@@ -698,10 +700,36 @@ sub setup_options {
     return;
 }
 
+#
+# add commands
+#
 sub setup_commands {
-    #
-    # add commands
-    #
+    __PACKAGE__->add_command(
+        name     => 'config',
+        synopsis => 'Output information suitable for a zsh completion script',
+        args     => [{ name => 'group', synopsis => 'What to complete', required => 0 } ],
+        tag      => 'common',
+        do       => sub {
+            my ($self) = @_;
+            my $highlighter = sub {
+                my $v = HELPER::human_readable_default($_[0]);
+                return HELPER::style(
+                    $v =~ /true|false/gmx ? $v : 'string', $v);
+            };
+            for my $k (__PACKAGE__->list_options()) {
+                my $opt = __PACKAGE__->get_option($k);
+                my $v = $self->{config}->{$k};
+                printf "%s=%s",
+                    $k,
+                    $highlighter->($v);
+                if ($v ne $opt->{default}) {
+                    printf "\t# default: %s", $highlighter->($opt->{default});
+                }
+                printf "\n";
+
+            }
+        }
+    );
     __PACKAGE__->add_command(
         name     => 'zsh_complete',
         synopsis => 'Output information suitable for a zsh completion script',
@@ -715,7 +743,7 @@ sub setup_commands {
                 my @alldirs = @{$self->{config}->{repo_dirs}};
                 push(@alldirs, $self->{config}->{base_dir});
                 for my $dir (@alldirs) {
-                    for my $host (@{RepoLocator->list_plugins}) {
+                    for my $host (@{__PACKAGE__->list_plugins}) {
                         continue unless (-d "$dir/$host");
                         my $_out = qx(find "$dir/$host" -maxdepth 2 -mindepth 2 -type d);
                         chomp $_out;
@@ -727,19 +755,19 @@ sub setup_commands {
                     }
                 }
             } elsif ($group eq 'option_names') {
-                push @complete, RepoLocator->list_options();
+                push @complete, __PACKAGE__->list_options();
             } elsif ($group eq 'options') {
-                for my $opt_name (RepoLocator->list_options()) {
-                    my $opt = RepoLocator->get_option($opt_name);
+                for my $opt_name (__PACKAGE__->list_options()) {
+                    my $opt = __PACKAGE__->get_option($opt_name);
                     my $x = $opt->to_zsh();
                     chomp $x;
                     push @complete, split("\n", $x);
                 }
             } elsif ($group eq 'command_names') {
-                push @complete, RepoLocator->list_commands();
+                push @complete, __PACKAGE__->list_commands();
             } elsif ($group eq 'commands') {
-                for my $cmd_name (RepoLocator->list_commands()) {
-                    my $cmd = RepoLocator->get_command($cmd_name);
+                for my $cmd_name (__PACKAGE__->list_commands()) {
+                    my $cmd = __PACKAGE__->get_command($cmd_name);
                     my $x = $cmd->to_zsh();
                     chomp $x;
                     push @complete, split("\n", $x);
@@ -801,7 +829,7 @@ sub setup_commands {
             my @alldirs = @{$self->{config}->{repo_dirs}};
             push(@alldirs, $self->{config}->{base_dir});
             for my $dir (@alldirs) {
-                for my $host (@{RepoLocator->list_plugins}) {
+                for my $host (@{__PACKAGE__->list_plugins}) {
                     continue unless (-d "$dir/$host");
                     system(qq{find "$dir/$host" -maxdepth 2 -mindepth 2 -type d|sed 's,.*/,,'|sort|uniq });
                 }

@@ -8,6 +8,8 @@ use File::Basename qw(dirname);
 use lib realpath(dirname(realpath $0) . '/../lib');
 use RepoLocator;
 use HELPER;
+use Data::Dumper;
+$Data::Dumper::Terse = 1;
 
 my @ARGV_PROCESSED;
 my $cli_config = {};
@@ -18,14 +20,14 @@ while (my $arg = shift(@ARGV)) {
         $v //= 1;
         if ($k =~ /^no-/) {
             $k =~ s/^no-//;
-            $v = undef;
+            $v = 0;
         }
         OPTION_LOOP:
         for (RepoLocator->list_options()) {
             my $opt = RepoLocator->get_option($_);
             if (exists $opt->{shortcut}->{$k}) {
-                $k = $opt->{name};
                 $v = $opt->{shortcut}->{$k};
+                $k = $opt->{name};
                 last;
             }
         }
