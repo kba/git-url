@@ -202,6 +202,25 @@ sub _edit_command
     }
     return $cmd;
 }
+sub shortcut_to_url
+{
+    my ($self, $path) = @_;
+    my $platform_user = $self->{config}->{platform};
+    $platform_user =~ s/[^a-zA-Z0-9_].*//;
+    $platform_user .= '_user';
+    my ($repo_name, $org, $host) = reverse(split('/', $path));
+    if (! $org) {
+        HELPER::log_debug("Prepending $platform_user " . $self->{config}->{$platform_user});
+        HELPER::require_config($self->{config}, $platform_user);
+        $org = $self->{config}->{$platform_user};
+    }
+    if (! $host) {
+        $host = $self->{config}->{platform};
+    }
+    HELPER::log_debug("Parsed as " . "https://$host/$org/$repo_name");
+    return "https://$host/$org/$repo_name";
+}
+
 
 sub _parse_filename
 {
@@ -215,8 +234,8 @@ sub _parse_filename
     ($path, $self->{line}, $self->{column}) = split(':', $path);
     if (! -e $path) {
         HELPER::log_debug("No such file/directory: $path");
-        HELPER::log_info("Interpreting '%s' as '%s' URL", $path, $self->{config}->{platform});
-        return $self->_parse_url($self->get_plugin($self->{config}->{platform})->to_url($self, $path));
+        HELPER::log_info("Parsing '%s' as a shortcut", $path);
+        return $self->_parse_url($self->shortcut_to_url($path));
     }
     $path = File::Spec->rel2abs($path);
     my $dir = HELPER::_git_dir_for_filename($path);
@@ -475,7 +494,7 @@ sub new
     if ($self->{config}->{platform} && ! $self->get_plugin($self->{config}->{platform})) {
         HELPER::log_die(
             sprintf("Config: No plugin supports platform '%s'. Supported: [%s]",
-                $self->config->{platform}, join(', ', $self->list_plugins())));
+                $self->{config}->{platform}, join(', ', $self->list_plugins())));
     }
     $self->{path_within_repo} = '.';
     $self->{branch}           = 'master'; # TODO
@@ -668,7 +687,7 @@ sub setup_options {
     );
     __PACKAGE__->add_option(
         name     => 'platform',
-        shortcut => { 'gh' => 'github.com', 'gl' => 'gitlab.com', 'bb' => 'bitbucket.com' },
+        shortcut => { 'gh' => 'github.com', 'gl' => 'gitlab.org', 'bb' => 'bitbucket.org' },
         synopsis => 'Use this platform as a fallback for non-absolute URI.',
         usage    => '--platform=<plugin>',
         default  => 'github.com',
@@ -748,8 +767,8 @@ sub setup_commands {
                         my $_out = qx(find "$dir/$host" -maxdepth 2 -mindepth 2 -type d);
                         chomp $_out;
                         for (split("\n", $_out)) {
-                            s,^$dir,,;
-                            s,^(.*?)/([^/]*)/([^/]*)/([^/]*)$,$4:$2/$3/$4,gm;
+                            s,^$dir/,,;
+                            # s,^(.*?)/([^/]*)/([^/]*)/([^/]*)$,$4:$2/$3/$4,gm;
                             push @complete, $_;
                         }
                     }
@@ -761,10 +780,12 @@ sub setup_commands {
                     my $opt = __PACKAGE__->get_option($opt_name);
                     my $x = $opt->to_zsh();
                     chomp $x;
-                    push @complete, split("\n", $x);
+                    push @complete, "- " . $opt->{tag} . "\n", split("\n", $x);
                 }
             } elsif ($group eq 'command_names') {
                 push @complete, __PACKAGE__->list_commands();
+            } elsif ($group eq 'tags') {
+                push @complete, 'all', __PACKAGE__->list_tags();
             } elsif ($group eq 'commands') {
                 for my $cmd_name (__PACKAGE__->list_commands()) {
                     my $cmd = __PACKAGE__->get_command($cmd_name);
@@ -918,7 +939,7 @@ sub setup_commands {
         do       => sub {
             my ($self) = @_;
             $_ = $self->{args}->[0];
-            if (/^o$/) {
+            if ($_ && /^o$/) {
                 $_ = $self->{args}->[1];
                 s/^-*//mx;
                 s/-/_/gmx;

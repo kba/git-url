@@ -51,17 +51,6 @@ sub add_options
     return;
 }
 
-sub to_url
-{
-    my ($self, $parent, $path) = @_;
-    if (index($path, '/') == -1) {
-        HELPER::require_config($parent->{config}, 'gitlab_user');
-        HELPER::log_debug("Prepending " . $parent->{config}->{gitlab_user});
-        $path = join('/', $parent->{config}->{gitlab_user}, $path);
-    }
-    return "https://gitlab.com/$path";
-}
-
 sub create_repo
 {
     my ($self, $parent) = @_;

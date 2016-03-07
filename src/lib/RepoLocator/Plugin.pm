@@ -6,7 +6,7 @@ use HELPER;
 sub new {
     my ($cls, %_self) = @_;
 
-    HELPER::validate_required_methods($cls, qw(add_options to_url list_hosts));
+    HELPER::validate_required_methods($cls, qw(add_options list_hosts));
 
     return bless \%_self, $cls;
 }

@@ -51,17 +51,6 @@ sub add_options
     return;
 }
 
-sub to_url
-{
-    my ($cls, $self, $path) = @_;
-    if (index($path, '/') == -1) {
-        HELPER::require_config($self->{config}, 'github_user');
-        HELPER::log_debug("Prepending " . $self->{config}->{github_user});
-        $path = join('/', $self->{config}->{github_user}, $path);
-    }
-    return "https://github.com/$path";
-}
-
 sub create_repo
 {
     my ($cls, $self) = @_;

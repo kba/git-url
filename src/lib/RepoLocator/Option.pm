@@ -55,7 +55,7 @@ sub to_zsh
     my $name = $self->{name};
     my $synopsis = $self->{synopsis};
     $name =~ s/_/-/g;
-    my $tpl = qq{--%s[%s]\n};
+    my $tpl = qq{--%s=-[%s]\n};
     my $out = sprintf($tpl, $name, $synopsis);
     for my $shortcut (keys %{ $self->{shortcut} }) {
         my $val = $self->{shortcut}->{$shortcut};

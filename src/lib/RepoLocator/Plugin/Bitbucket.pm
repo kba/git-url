@@ -54,17 +54,6 @@ sub add_options
     return;
 }
 
-sub to_url
-{
-    my ($cls, $self, $path) = @_;
-    if (index($path, '/') == -1) {
-        HELPER::require_config($self->{config}, 'bitbucket_user');
-        HELPER::log_debug("Prepending " . $self->{config}->{bitbucket_user});
-        $path = join('/', $self->{config}->{bitbucket_user}, $path);
-    }
-    return "https://bitbucket.com/$path";
-}
-
 sub create_repo
 {
     my ($cls, $self) = @_;
