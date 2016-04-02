@@ -267,6 +267,12 @@ sub _parse_filename
     return;
 }
 
+=head2 _parse_url
+
+Parse a string as a URL-ish location.
+
+=cut
+
 sub _parse_url
 {
     my ($self, $url) = @_;
@@ -295,6 +301,11 @@ sub _parse_url
     return $self;
 }
 
+=head2 _set_clone_url
+
+Set the URL for cloning the repo.
+
+=cut
 sub _set_clone_url
 {
     my ($self) = @_;
@@ -318,6 +329,12 @@ sub _set_clone_url
     return;
 }
 
+=head2 _set_browse_url
+
+Set the URL for the WWW landing page of the repo.
+
+=cut
+
 sub _set_browse_url
 {
     my ($self) = @_;
@@ -340,6 +357,12 @@ sub _set_browse_url
     }
     return;
 }
+
+=head2 _find_in_repo_dirs
+
+Try to find the local repo in one of the directories.
+
+=cut
 
 sub _find_in_repo_dirs
 {
@@ -371,6 +394,12 @@ sub _find_in_repo_dirs
     return;
 }
 
+=head2 _create_repo
+
+Create a repository on the platform.
+
+=cut
+
 sub _create_repo
 {
     my ($self) = @_;
@@ -387,6 +416,12 @@ sub _create_repo
     return;
 }
 
+=head2 _fork_repo
+
+Fork a repository on the platform before cloning.
+
+=cut
+
 sub _fork_repo
 {
     my ($self) = @_;
@@ -402,6 +437,11 @@ sub _fork_repo
     return;
 }
 
+=head2 _obtain_repo
+
+Get a local repository by any means necessary.
+
+=cut
 sub _obtain_repo
 {
     my ($self) = @_;
@@ -425,18 +465,16 @@ sub _obtain_repo
     }
 }
 
+=head2 _clone_repo
+
+Clone a repository.
+
+=cut
+
 sub _clone_repo
 {
     my ($self) = @_;
     HELPER::require_location($self, 'host', 'owner', 'repo_name');
-    # if ($self->{path_to_repo} && !$self->{config}->{ignore_existing}) {
-    #     HELPER::log_info(
-    #         sprintf("We already have a path to this one (%s), not cloning to base_dir",
-    #             $self->{path_to_repo}));
-    # }
-    # if ($self->{config}->{fork}) {
-    #     $self->_fork_repo();
-    # }
     my $ownerDir = join('/', $self->{config}->{base_dir}, $self->{host}, $self->{owner});
     HELPER::_mkdirp($ownerDir);
     HELPER::_chdir($ownerDir);
@@ -481,6 +519,9 @@ sub new
     my $self = bless {}, $class;
 
     $self->{args}   = $_args;
+    unless (scalar(@{$self->{args}})) {
+        $self->{args}   = ['.'];
+    }
     $self->{config} = $self->_load_config($cli_config);
 
     # sanity checks
