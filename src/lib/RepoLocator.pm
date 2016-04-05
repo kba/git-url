@@ -519,9 +519,9 @@ sub new
     my $self = bless {}, $class;
 
     $self->{args}   = $_args;
-    unless (scalar(@{$self->{args}})) {
-        $self->{args}   = ['.'];
-    }
+    # unless (scalar(@{$self->{args}})) {
+    #     $self->{args}   = ['.'];
+    # }
     $self->{config} = $self->_load_config($cli_config);
 
     # sanity checks
