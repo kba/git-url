@@ -173,17 +173,20 @@ sub human_readable_default
 }
 
 our $styles = {
-    'option'      => 'magenta bold',
-    'default'     => 'black bold',
-    'command'     => 'green bold',
-    'arg'         => 'yellow bold',
-    'optarg'      => 'yellow italic',
-    'script-name' => 'blue bold',
-    'heading'     => 'underline',
-    'error'       => 'bold red',
-    'false'       => 'red',
-    'true'        => 'green',
-    'string'      => 'yellow',
+    'option'       => 'magenta bold',
+    'default'      => 'black bold',
+    'command'      => 'green bold',
+    'arg'          => 'yellow bold',
+    'optarg'       => 'yellow italic',
+    'script-name'  => 'blue bold',
+    'heading'      => 'underline',
+    'error'        => 'bold red',
+    'false'        => 'red',
+    'true'         => 'green',
+    'string'       => 'yellow',
+    'platform'     => 'red bold',
+    'platform-user' => 'magenta bold',
+    'repo_name'    => 'blue bold',
 };
 
 sub style
