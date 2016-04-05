@@ -941,6 +941,7 @@ sub setup_commands {
                     HELPER::require_location($self, 'path_to_repo');
                     HELPER::_chdir $self->{path_to_repo};
                     $session = $self->{repo_name};
+                    $session =~ s/[^A-Za-z0-9_-]/-/g;
                 }
                 HELPER::_system("tmux attach -d -t" . $session);
                 if ($?) {
