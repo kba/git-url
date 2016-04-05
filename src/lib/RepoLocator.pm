@@ -881,7 +881,7 @@ sub setup_commands {
         }
     );
     __PACKAGE__->add_command(
-        name     => 'list_repos',
+        name     => 'ls',
         synopsis => 'List all local repositories',
         args     => [],
         tag      => 'common',
