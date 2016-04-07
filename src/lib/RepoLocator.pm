@@ -7,7 +7,7 @@ use File::Spec;
 use Carp qw(croak carp);
 use Term::ANSIColor;
 $Data::Dumper::Terse = 1;
-our $CONFIG_FILE = join('/', $ENV{HOME}, '.config', "__SCRIPT_NAME__", 'config.ini');
+our $CONFIG_FILE = join('/', $ENV{HOME}, '.config', $HELPER::SCRIPT_NAME, 'config.ini');
 
 use RepoLocator::Command;
 use RepoLocator::Option;
