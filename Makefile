@@ -14,8 +14,8 @@ LN = ln -svf
 CP_SECURE = cp -irv
 MKDIR = mkdir -pv
 CHMOD_AX = chmod -c a+x
-PANDOC = pandoc -s -M hyphenate=false -V adjusting=false -t man
-
+PANDOC_OPTIONS = -M hyphenate=false -V adjusting=false 
+PANDOC = pandoc -s $(PANDOC_OPTIONS) -t man
 LIB_TARGETS = $(shell find src/lib -type f -name "*.pm"|sed 's,src/,,')
 
 .PHONY: clean check \
