@@ -113,20 +113,19 @@ uninstall-all: uninstall uninstall-config
 #
 # Distribution stuff
 #
-
-TODAY := $(shell date '+%Y-%m-%d')
-VERSION_patch := $(shell semver bump patch --pretend)
-VERSION_minor := $(shell semver bump minor --pretend)
-VERSION_major := $(shell semver bump major --pretend)
-bump-%: has-semver
-	sed -i '/^<!-- newest-changes/a ## [$(VERSION_$*)] - $(TODAY)\
-	Added\
-	Changed\
-	Fixed\
-	Removed\
-	' CHANGELOG.md
-	sed -i '/^<!-- link-labels/a [$(VERSION_$*)]: ../../compare/v$(VERSION)...v$(VERSION_$*)' CHANGELOG.md
-	$(EDITOR) CHANGELOG.md
-	semver bump $*
-	git commit -v .
-	git tag -a v$(VERSION_$*) -m "Release $(VERSION_$*)"
+# TODAY := $(shell date '+%Y-%m-%d')
+# VERSION_patch := $(shell semver bump patch --pretend)
+# VERSION_minor := $(shell semver bump minor --pretend)
+# VERSION_major := $(shell semver bump major --pretend)
+# bump-%: has-semver
+#     sed -i '/^<!-- newest-changes/a ## [$(VERSION_$*)] - $(TODAY)\
+#     Added\
+#     Changed\
+#     Fixed\
+#     Removed\
+#     ' CHANGELOG.md
+#     sed -i '/^<!-- link-labels/a [$(VERSION_$*)]: ../../compare/v$(VERSION)...v$(VERSION_$*)' CHANGELOG.md
+#     $(EDITOR) CHANGELOG.md
+#     semver bump $*
+#     git commit -v .
+#     git tag -a v$(VERSION_$*) -m "Release $(VERSION_$*)"
