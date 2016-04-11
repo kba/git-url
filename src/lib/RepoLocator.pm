@@ -7,7 +7,7 @@ use File::Spec;
 use Carp qw(croak carp);
 use Term::ANSIColor;
 $Data::Dumper::Terse = 1;
-our $CONFIG_FILE = join('/', $ENV{HOME}, '.config', "__SCRIPT_NAME__", 'config.ini');
+our $CONFIG_FILE = join('/', $ENV{HOME}, '.config', $HELPER::SCRIPT_NAME, 'config.ini');
 
 use RepoLocator::Command;
 use RepoLocator::Option;
@@ -206,7 +206,7 @@ sub shortcut_to_url
 {
     my ($self, $path) = @_;
     my $platform_user = $self->{config}->{platform};
-    $platform_user =~ s/[^a-zA-Z0-9_].*//;
+    $platform_user =~ s/[^a-zA-Z0-9_].*//xm;
     $platform_user .= '_user';
     my ($repo_name, $org, $host) = reverse(split('/', $path));
     if (! $org) {
@@ -367,7 +367,7 @@ Try to find the local repo in one of the directories.
 sub _find_in_repo_dirs
 {
     my $self = shift;
-    HELPER::log_trace("Looking for %s in repo_dirs", $self->{repo_name});
+    HELPER::log_trace("Looking for %s in repo_dirs %s", $self->{repo_name}, Dumper $self->{config}->{repo_dirs});
     for my $dir (@{ $self->{config}->{repo_dirs} }, $self->{config}->{base_dir}) {
         HELPER::log_trace("Checking repo_dir $dir");
         if (!-d $dir) {

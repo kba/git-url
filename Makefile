@@ -18,8 +18,7 @@ PANDOC = pandoc -s -M hyphenate=false -V adjusting=false -t man
 
 LIB_TARGETS = $(shell find src/lib -type f -name "*.pm"|sed 's,src/,,')
 
-.PHONY: clean check \
-	install uninstall
+.PHONY: clean check install uninstall
 
 all: lib bin man config.ini
 
