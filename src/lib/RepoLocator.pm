@@ -804,7 +804,7 @@ sub setup_commands {
                 push(@alldirs, $self->{config}->{base_dir});
                 for my $dir (@alldirs) {
                     for my $host (@{__PACKAGE__->list_plugins}) {
-                        continue unless (-d "$dir/$host");
+                        last unless (-d "$dir/$host");
                         my $_out = qx(find "$dir/$host" -maxdepth 2 -mindepth 2 -type d);
                         chomp $_out;
                         for (split("\n", $_out)) {
@@ -892,7 +892,7 @@ sub setup_commands {
             push(@alldirs, $self->{config}->{base_dir});
             for my $dir (@alldirs) {
                 for my $host (@{__PACKAGE__->list_plugins}) {
-                    continue unless (-d "$dir/$host");
+                    last unless (-d "$dir/$host");
                     system(qq{find "$dir/$host" -maxdepth 2 -mindepth 2 -type d|sed 's,.*/,,'|sort|uniq });
                 }
             }

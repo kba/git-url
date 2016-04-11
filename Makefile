@@ -14,8 +14,8 @@ LN = ln -svf
 CP_SECURE = cp -irv
 MKDIR = mkdir -pv
 CHMOD_AX = chmod -c a+x
-PANDOC = pandoc -s -M hyphenate=false -V adjusting=false -t man
-
+PANDOC_OPTIONS = -M hyphenate=false -V adjusting=false 
+PANDOC = pandoc -s $(PANDOC_OPTIONS) -t man
 LIB_TARGETS = $(shell find src/lib -type f -name "*.pm"|sed 's,src/,,')
 
 .PHONY: clean check install uninstall
@@ -112,20 +112,19 @@ uninstall-all: uninstall uninstall-config
 #
 # Distribution stuff
 #
-
-TODAY := $(shell date '+%Y-%m-%d')
-VERSION_patch := $(shell semver bump patch --pretend)
-VERSION_minor := $(shell semver bump minor --pretend)
-VERSION_major := $(shell semver bump major --pretend)
-bump-%: has-semver
-	sed -i '/^<!-- newest-changes/a ## [$(VERSION_$*)] - $(TODAY)\
-	Added\
-	Changed\
-	Fixed\
-	Removed\
-	' CHANGELOG.md
-	sed -i '/^<!-- link-labels/a [$(VERSION_$*)]: ../../compare/v$(VERSION)...v$(VERSION_$*)' CHANGELOG.md
-	$(EDITOR) CHANGELOG.md
-	semver bump $*
-	git commit -v .
-	git tag -a v$(VERSION_$*) -m "Release $(VERSION_$*)"
+# TODAY := $(shell date '+%Y-%m-%d')
+# VERSION_patch := $(shell semver bump patch --pretend)
+# VERSION_minor := $(shell semver bump minor --pretend)
+# VERSION_major := $(shell semver bump major --pretend)
+# bump-%: has-semver
+#     sed -i '/^<!-- newest-changes/a ## [$(VERSION_$*)] - $(TODAY)\
+#     Added\
+#     Changed\
+#     Fixed\
+#     Removed\
+#     ' CHANGELOG.md
+#     sed -i '/^<!-- link-labels/a [$(VERSION_$*)]: ../../compare/v$(VERSION)...v$(VERSION_$*)' CHANGELOG.md
+#     $(EDITOR) CHANGELOG.md
+#     semver bump $*
+#     git commit -v .
+#     git tag -a v$(VERSION_$*) -m "Release $(VERSION_$*)"
