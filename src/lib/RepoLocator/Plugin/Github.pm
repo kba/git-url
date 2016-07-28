@@ -66,13 +66,21 @@ sub create_repo
     my $api_url = join('/', $self->{config}->{github_api}, 'user', 'repos');
     my $user    = $self->{config}->{github_user};
     my $token   = $self->{config}->{github_token};
+    my $json = sprintf(q('{
+        "name": "%s",
+        "private": true
+    }')
+        , $self->{repo_name}
+    );
     my $forkCmd = join(
         ' ', 'curl', '-i', '-s',
         "-u $user:$token",
-        '-d ', sprintf(q('{"name": "%s"}'), $self->{repo_name}),
+        '-d ', $json, 
         '-XPOST',
         $api_url
     );
+    HELPER::log_info($forkCmd);
+    <>;
     my $resp = HELPER::_qx($forkCmd);
     if ([ split("\n", $resp) ]->[0] !~ 201) {
         HELPER::log_die("Failed to create the repo: $resp");

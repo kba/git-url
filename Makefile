@@ -16,6 +16,7 @@ MKDIR = mkdir -pv
 CHMOD_AX = chmod -c a+x
 PANDOC_OPTIONS = -M hyphenate=false -V adjusting=false 
 PANDOC = pandoc -s $(PANDOC_OPTIONS) -t man
+LIB_SOURCES = $(shell find src/lib -type f -name "*.pm")
 LIB_TARGETS = $(shell find src/lib -type f -name "*.pm"|sed 's,src/,,')
 
 .PHONY: clean check install uninstall
@@ -23,7 +24,7 @@ LIB_TARGETS = $(shell find src/lib -type f -name "*.pm"|sed 's,src/,,')
 all: lib bin man config.ini
 
 # lib
-lib: ${LIB_TARGETS}
+lib: $(LIB_TARGETS)
 
 lib/HELPER.pm: src/lib/HELPER.pm
 	@$(MKDIR) $(dir $@)
@@ -32,6 +33,10 @@ lib/HELPER.pm: src/lib/HELPER.pm
 	@sed -i 's/__VERSION__/$(VERSION)/' $@
 	@sed -i 's/__BUILD_DATE__/$(shell date)/' $@
 	@sed -i 's/__LAST_COMMIT__/$(LAST_COMMIT)/' $@
+
+lib/RepoLocator/%.pm: src/lib/RepoLocator/%.pm
+	@$(MKDIR) $(dir $@)
+	@$(CP) $< $@
 
 lib/%.pm: src/lib/%.pm
 	@$(MKDIR) $(dir $@)
