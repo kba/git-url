@@ -385,7 +385,7 @@ sub _find_in_repo_dirs
         for my $candidate (@candidates) {
             $candidate = "$dir/$candidate";
             HELPER::log_trace("Trying candidate $candidate");
-            if (-d $candidate && HELPER::_git_dir_for_filename($candidate) eq $candidate) {
+            if ((-l $candidate) || ((-d $candidate) && HELPER::_git_dir_for_filename($candidate) eq $candidate)) {
                 $self->{path_to_repo} = $candidate;
                 return;
             }
