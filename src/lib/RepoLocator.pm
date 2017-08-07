@@ -194,14 +194,15 @@ sub _edit_command
         ' ',
         $self->{config}->{editor},
         $self->{path_within_repo});
-    if ($self->{line}) {
-        my ($line) = $self->{line} =~ /(\d+)/mx;
+    if ($self->{linenumber}) {
+        my ($linenumber) = $self->{linenumber} =~ /(\d+)/mx;
         if ($self->{config}->{editor} =~ /vi/mx) {
-            $cmd .= " +$line";
+            $cmd .= " +$linenumber";
         }
     }
     return $cmd;
 }
+
 sub shortcut_to_url
 {
     my ($self, $path) = @_;
@@ -233,7 +234,8 @@ sub _parse_filename
     }
 
     # split path into filename:line:column
-    ($path, $self->{line}, $self->{column}) = split(':', $path);
+    ($path, $self->{linenumber}, $self->{column}) = split(':', $path);
+    # XXX check too strict
     if (! -e $path) {
         HELPER::log_debug("No such file/directory: $path");
         HELPER::log_info("Parsing '%s' as a shortcut", $path);
