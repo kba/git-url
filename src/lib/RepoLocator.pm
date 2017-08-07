@@ -209,7 +209,22 @@ sub shortcut_to_url
     my $platform_user = $self->{config}->{platform};
     $platform_user =~ s/[^a-zA-Z0-9_].*//xm;
     $platform_user .= '_user';
-    my ($repo_name, $org, $host) = reverse(split('/', $path));
+
+    my @slash_segments = split('/', $path);
+    my $nr_of_slashes = scalar(@slash_segments);
+
+    my ($repo_name, $org, $host, $path_within_repo);
+
+    if ($nr_of_slashes == 1) {
+        ($org, $repo_name) = @slash_segments;
+    } elsif ($nr_of_slashes == 2 && $slash_segments[0] =~ m/git(hub|lab)/) {
+        ($host, $org, $repo_name) = @slash_segments;
+    } else {
+        $org = shift(@slash_segments);
+        $repo_name = shift(@slash_segments);
+        $path_within_repo = join('/', @slash_segments);
+    }
+
     if (! $org) {
         HELPER::log_debug("Prepending $platform_user " . $self->{config}->{$platform_user});
         HELPER::require_config($self->{config}, $platform_user);
