@@ -1,12 +1,13 @@
 SCRIPT_NAME = git-url
 VERSION = $(shell cat .version)
 
-PREFIX = $(DESTDIR)/usr/local
-BINDIR = $(PREFIX)/bin
-LIBDIR = $(PREFIX)/share/$(SCRIPT_NAME)
-MANDIR = $(PREFIX)/share/man/man1
-ZSHDIR = $(PREFIX)/share/zsh/site-functions
-CONFDIR = $(HOME)/.config/$(SCRIPT_NAME)
+PREFIX     = $(DESTDIR)/usr/local
+BINDIR     = $(PREFIX)/bin
+LIBDIR     = $(PREFIX)/share/$(SCRIPT_NAME)
+MANBASEDIR = $(PREFIX)/share/man
+MANDIR     = $(PREFIX)/share/man/man1
+ZSHDIR     = $(PREFIX)/share/zsh/site-functions
+CONFDIR    = $(HOME)/.config/$(SCRIPT_NAME)
 
 RM = rm -rvf
 CP = cp -rv

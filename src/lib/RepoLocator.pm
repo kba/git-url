@@ -217,6 +217,8 @@ sub shortcut_to_url
     if (! $host) {
         $host = $self->{config}->{platform};
     }
+
+    # XXX hard-coded
     HELPER::log_debug("Parsed as " . "https://$host/$org/$repo_name");
     return "https://$host/$org/$repo_name";
 }
@@ -347,6 +349,7 @@ sub _set_browse_url
         $self->{owner},
         $self->{repo_name},
       );
+
     if ($self->{path_within_repo} !~ '^\.?$') {
         $self->{browse_url} .= join(
             '/',
@@ -361,6 +364,8 @@ sub _set_browse_url
 =head2 _find_in_repo_dirs
 
 Try to find the local repo in one of the directories.
+
+If found, the `path_to_repo` variable is set.
 
 =cut
 
@@ -379,6 +384,8 @@ sub _find_in_repo_dirs
             join('/', $self->{owner}, $self->{repo_name}),
             join('/', $self->{host}, $self->{owner}, $self->{repo_name}),
         );
+
+        # XXX hard-coded
         for my $host (qw(github.com gitlab.com bitbucket.com)) {
             push @candidates, join('/', $host, $self->{owner}, $self->{repo_name});
         }
@@ -529,16 +536,20 @@ sub new
         HELPER::log_debug("--fork implies --clone");
         $self->{config}->{clone} = 1;
     }
+
     if ($self->{config}->{create} && $self->{config}->{fork}) {
         HELPER::log_die("--create conflicts with --fork");
     }
+
     if ($self->{config}->{platform} && ! $self->get_plugin($self->{config}->{platform})) {
         HELPER::log_die(
             sprintf("Config: No plugin supports platform '%s'. Supported: [%s]",
                 $self->{config}->{platform}, join(', ', $self->list_plugins())));
     }
+
     $self->{path_within_repo} = '.';
-    $self->{branch}           = 'master'; # TODO
+    $self->{branch}           = 'master'; # TODO hard-coded
+
     if ($self->{args}->[0]) {
         if ($self->{args}->[0] =~ /^(https?:|git@)/mx) {
             $self->_parse_url($self->{args}->[0]);
@@ -604,6 +615,7 @@ sub usage
 # add plugins
 #
 sub setup_plugins {
+    # XXX hard-coded
     __PACKAGE__->add_plugin('RepoLocator::Plugin::Bitbucket');
     __PACKAGE__->add_plugin('RepoLocator::Plugin::Github');
     __PACKAGE__->add_plugin('RepoLocator::Plugin::Gitlab');
@@ -621,6 +633,7 @@ sub setup_options {
         default  => 1,
         tag      => 'common',
     );
+
     __PACKAGE__->add_option(
         name     => 'base_dir',
         env      => 'GITDIR',
@@ -629,6 +642,7 @@ sub setup_options {
         default  => $ENV{GITDIR} || $ENV{HOME} . '/build',
         tag      => 'prefs',
     );
+
     # TODO fix this
     __PACKAGE__->add_option(
         name     => 'repo_dirs',
@@ -639,6 +653,7 @@ sub setup_options {
         env      => 'GITDIR_PATH',
         tag      => 'prefs',
     );
+
     __PACKAGE__->add_option(
         name      => 'editor',
         synopsis  => 'The editor to open files with.',
@@ -648,6 +663,7 @@ sub setup_options {
         man_usage => '--editor=*BINARY*',
         tag       => 'prefs',
     );
+
     __PACKAGE__->add_option(
         name => 'browser',
         env       => 'BROWSER',
@@ -657,6 +673,7 @@ sub setup_options {
         default   => $ENV{BROWSER} || 'chromium',
         tag       => 'prefs',
     );
+
     __PACKAGE__->add_option(
         name      => 'shell',
         env       => 'SHELL',
@@ -666,6 +683,7 @@ sub setup_options {
         tag       => 'prefs',
         default   => $ENV{SHELL} || 'bash',
     );
+
     __PACKAGE__->add_option(
         name      => 'loglevel',
         shortcut  => { 'info' => 'info', 'debug' => 'debug', 'trace' => 'trace', 'error'=>'error' },
@@ -683,6 +701,7 @@ sub setup_options {
         tag     => 'common',
         default => $ENV{LOGLEVEL} || 'error',
     );
+
     __PACKAGE__->add_option(
         name      => 'clone_opts',
         synopsis  => 'Additional arguments to pass to "git clone"',
@@ -691,6 +710,7 @@ sub setup_options {
         long_desc => 'Additional command line arguments to pass to *git-clone(1)*',
         tag       => 'prefs',
     );
+
     __PACKAGE__->add_option(
         name => 'prefer_ssh',
         synopsis  => 'Whether to prefer "git@" over "https:" URL',
@@ -705,6 +725,7 @@ sub setup_options {
         ),
         tag => 'prefs',
     );
+
     __PACKAGE__->add_option(
         name     => 'clone',
         synopsis => 'Whether to clone the repo locally.',
@@ -712,6 +733,7 @@ sub setup_options {
         default  => 1,
         tag      => 'common',
     );
+
     __PACKAGE__->add_option(
         name     => 'fork',
         synopsis => 'Whether to fork the repository before cloning.',
@@ -719,6 +741,7 @@ sub setup_options {
         default  => 0,
         tag      => 'common',
     );
+
     __PACKAGE__->add_option(
         name     => 'create',
         synopsis => 'Create a new repo if it could not be found',
@@ -726,6 +749,7 @@ sub setup_options {
         default  => 0,
         tag      => 'common',
     );
+
     __PACKAGE__->add_option(
         name     => 'platform',
         shortcut => { 'gh' => 'github.com', 'gl' => 'gitlab.org', 'bb' => 'bitbucket.org' },
@@ -734,6 +758,7 @@ sub setup_options {
         default  => 'github.com',
         tag      => 'common',
     );
+
     __PACKAGE__->add_option(
         name     => 'create_private',
         synopsis => 'If a new repository is created, it should be non-public.',
@@ -741,6 +766,7 @@ sub setup_options {
         default  => 0,
         tag      => 'common',
     );
+
     __PACKAGE__->add_option(
         name     => 'prompt',
         shortcut => {p => 1},
@@ -749,6 +775,7 @@ sub setup_options {
         default  => 0,
         tag      => 'common',
     );
+
     __PACKAGE__->add_option(
         name => 'ignore_existing',
         synopsis  => "Don't look for the repo in the directories",
@@ -756,6 +783,7 @@ sub setup_options {
         default   => 0,
         tag       => 'common',
     );
+
 
     return;
 }
@@ -790,6 +818,7 @@ sub setup_commands {
             }
         }
     );
+
     __PACKAGE__->add_command(
         name     => 'zsh_complete',
         synopsis => 'Output information suitable for a zsh completion script',
@@ -840,6 +869,7 @@ sub setup_commands {
             print join("\n", @complete);
         }
     );
+
     __PACKAGE__->add_command(
         name      => 'edit',
         synopsis  => 'Edit file at <location>',
@@ -870,6 +900,7 @@ sub setup_commands {
             HELPER::_system $self->_edit_command();
         }
     );
+
     __PACKAGE__->add_command(
         name     => 'url',
         synopsis => 'Get the URL to this file in the online repository.',
@@ -880,6 +911,7 @@ sub setup_commands {
             print $self->{browse_url} . "\n";
         }
     );
+
     __PACKAGE__->add_command(
         name     => 'ls',
         synopsis => 'List all local repositories',
@@ -898,6 +930,7 @@ sub setup_commands {
             }
         }
     );
+
     __PACKAGE__->add_command(
         name     => 'shell',
         synopsis => 'Open a shell in the local repository directory',
@@ -911,6 +944,7 @@ sub setup_commands {
             HELPER::_system $self->{config}->{shell};
         }
     );
+
     __PACKAGE__->add_command(
         name     => 'tmux',
         synopsis => 'Attach to or create a tmux session named like the repo.',
@@ -950,6 +984,7 @@ sub setup_commands {
             }
         }
     );
+
     __PACKAGE__->add_command(
         name     => 'path',
         synopsis => 'Show the path of the local repository for a URL',
@@ -973,6 +1008,7 @@ sub setup_commands {
             HELPER::_system(join(' ', $self->{config}->{browser}, $self->{browse_url}));
         }
     );
+
     __PACKAGE__->add_command(
         name     => 'help',
         synopsis => 'Open help for subcommand or man page',
@@ -1008,6 +1044,7 @@ sub setup_commands {
             }
         }
     );
+
     __PACKAGE__->add_command(
         name     => 'version',
         synopsis => 'Show version information and such',
@@ -1022,6 +1059,7 @@ sub setup_commands {
             printf "https://github.com/kba/%s/commit/%s\n", $HELPER::SCRIPT_NAME, $HELPER::LAST_COMMIT;
         }
     );
+
     __PACKAGE__->add_command(
         name     => 'usage',
         synopsis => 'Show usage',
@@ -1040,6 +1078,7 @@ sub setup_commands {
             __PACKAGE__->usage(tags => \@tags);
         }
     );
+
     return;
 }
 
