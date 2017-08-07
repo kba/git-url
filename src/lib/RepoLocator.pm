@@ -643,6 +643,7 @@ sub setup_plugins {
 # add options
 #
 sub setup_options {
+
     __PACKAGE__->add_option(
         name     => 'color',
         synopsis => 'Whether to use colors',
@@ -1013,6 +1014,31 @@ sub setup_commands {
             print $self->{path_to_repo} . "\n";
         }
     );
+
+    __PACKAGE__->add_command(
+        name     => 'readme',
+        synopsis => 'Find a README for this repo',
+        long_desc => 'Look for README in local dirs, otherwise print its URL',
+        args     => [ { name => 'location', synopsis => 'Location to browse', required => 0 } ],
+        tag      => 'common',
+        do       => sub {
+            my ($self) = @_;
+            $self->{path_within_repo} = '/README.md';
+            my $full_path = join('', $self->{path_to_repo}, $self->{path_within_repo});
+            if (! $self->{config}->{color}) {
+                print "$full_path";
+            } else {
+                HELPER::log_debug("Opening mdv for $full_path");
+                HELPER::_system(join(' ',
+                        # XXX shellescape
+                        'cat', $full_path,
+                        '|', 'sed "/<!--/ d"',
+                        '|', 'mdv -u h -',
+                    ));
+            }
+        }
+    );
+
     __PACKAGE__->add_command(
         name     => 'browse',
         synopsis => 'Open the browser to this file.',
