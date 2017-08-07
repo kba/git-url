@@ -22,11 +22,28 @@ LIB_TARGETS = $(shell find src/lib -type f -name "*.pm"|sed 's,src/,,')
 
 .PHONY: clean check install uninstall
 
+help:
+	@echo "-----------------------------------------"
+	@echo "Building git-url (Last Commit: $(LAST_COMMIT))"
+	@echo "-----------------------------------------"
+	
+	@echo
+	@echo "Targets"
+	@echo "  all            Build the full application, including config.ini"
+	@echo "  install        Install the application"
+	@echo "  install-config Install the configuration file"
+	@echo
+	@echo "Variables"
+	@echo "  PREFIX   Install prefix ['$(PREFIX)']"
+	@echo "  CONFDIR  Directory to installconfig to ['$(CONFDIR)']"
+	@echo
+
 all: lib bin man config.ini
 
 # lib
 lib: $(LIB_TARGETS)
 
+LAST_COMMIT = $(shell git log --pretty=format:'%h' -n 1)
 lib/HELPER.pm: src/lib/HELPER.pm
 	@$(MKDIR) $(dir $@)
 	@$(CP) $< $@
@@ -46,7 +63,6 @@ lib/%.pm: src/lib/%.pm
 # bin
 bin: bin/$(SCRIPT_NAME)
 
-LAST_COMMIT = $(shell git log --pretty=format:'%h' -n 1)
 bin/$(SCRIPT_NAME): src/bin/$(SCRIPT_NAME).pl
 	@$(MKDIR) bin
 	@$(CP) $< $@
@@ -76,7 +92,7 @@ has-%:
 
 check: has-perl has-git has-curl
 	@echo "$(PATH)" | grep -q '$(BINDIR)' || { echo "BINDIR $(BINDIR) not in your PATH!" && exit 1; }
-	@echo "$(MANPATH)" | grep -q '$(MANDIR)' || { echo "MANDIR $(MANDIR) not in your MANPATH!" && exit 1; }
+	@echo "$(MANPATH)" | grep -q '$(MANBASEDIR)' || { echo "MANDIR $(MANDIR) not in your MANPATH!" && exit 1; }
 
 #
 # Install
