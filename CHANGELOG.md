@@ -6,6 +6,21 @@ This project adheres to [Semantic Versioning](http://semver.org/).
 
 ## [unreleased]
 Added
+Changed
+Fixed
+Removed
+
+<!-- newest-changes -->
+## [0.2.0] - 2017-08-08
+Added
+* `readme` command
+* `ls-abs` command
+Fixed
+* more flexible shortcut to url parsing
+* added comments and folds throughout
+
+## [0.1.1] - 2016-06-07
+Added
 * Basic Support for Bitbucket
 * zsh completion
 * list_repos command
@@ -13,9 +28,7 @@ Changed
 * Auto-generate config.ini
 Fixed
 * Missing required args errro
-Removed
 
-<!-- newest-changes -->
 ## [0.1.0] - 2016-01-10
 Added
 * Script to generate man page sections, integrated in Makefile
@@ -96,6 +109,8 @@ Added
 * Initial commit
 
 <!-- link-labels -->
+[0.2.0]: ../../compare/v0.1.1...v0.2.0
+[0.1.1]: ../../compare/v0.1.0...v0.1.1
 [0.1.0]: ../../compare/v0.0.7...v0.1.0
 [0.0.7]: ../../compare/v0.0.6...v0.0.7
 [0.0.6]: ../../compare/v0.0.5...v0.0.6
