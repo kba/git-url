@@ -11,11 +11,9 @@ our $VERSION     = "__VERSION__";
 our $BUILD_DATE  = "__BUILD_DATE__";
 our $LAST_COMMIT = "__LAST_COMMIT__";
 
-#---------
-#
-# Logging
-#
-#---------
+#====================================================
+#{{{ Logging
+
 our $LOGLEVEL = 0;
 our $PROMPT   = 0;
 our $STYLING_ENABLED    = 1;
@@ -43,6 +41,11 @@ sub log_info  { return _log(\@_, "INFO",  1, 'bold green'); }
 sub log_error { return _log(\@_, "ERROR", 0, 'bold red'); }
 sub log_die { $_[1] .= join( ' ', caller ); log_error(@_); return exit 70; }
 
+#}}}
+#====================================================
+
+#====================================================
+#{{{ Requirements on configuration and specified location
 sub require_config
 {
     my ($config, @keys) = @_;
@@ -75,11 +78,11 @@ sub require_location
     return;
 }
 
-#---------
-#
-# HELPER
-#
-#---------
+#}}}
+#====================================================
+
+#====================================================
+#{{{ File and filesystem helpers
 
 sub _chdir
 {
@@ -126,7 +129,11 @@ sub _slurp
     close $handle;
     return \@lines;
 }
+#}}}
+#====================================================
 
+#====================================================
+#{{{ _git_dir_for_filename
 sub _git_dir_for_filename
 {
     my $path = shift;
@@ -143,12 +150,11 @@ sub _git_dir_for_filename
     }
     return $dir;
 }
+#}}}
+#====================================================
 
-#----------------
-#
-# String helpers
-#
-#----------------
+#====================================================
+#{{{ String helpers
 
 sub unindent
 {
@@ -201,12 +207,11 @@ sub style
     }
     return $out;
 }
+#}}}
+#====================================================
 
-#-------------
-#
-# OOP Helpers
-#
-#-------------
+#====================================================
+#{{{ OOP Helpers
 
 sub validate_required_methods
 {
@@ -259,5 +264,7 @@ sub validate_known_args
     }
     return;
 }
+#}}}
+#====================================================
 
 1;
