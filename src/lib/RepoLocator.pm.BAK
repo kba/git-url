@@ -4,7 +4,6 @@ use warnings;
 use HELPER;
 use Data::Dumper;
 use File::Spec;
-use List::MoreUtils qw(uniq);
 use Carp qw(croak carp);
 use Term::ANSIColor;
 $Data::Dumper::Terse = 1;
@@ -181,7 +180,7 @@ sub _all_repo_dirs
     # TODO this should not be necessary
     my @alldirs = @{$self->{config}->{repo_dirs}};
     push(@alldirs, $self->{config}->{base_dir});
-    return [uniq @alldirs];
+    return \@alldirs;
 }
 #}}}
 
@@ -1039,35 +1038,15 @@ __PACKAGE__->add_command({
 
         my @alldirs = @{ $self->_all_repo_dirs() };
 
-        my @lines;
         for my $dir (@alldirs) {
             for my $host (@{__PACKAGE__->list_plugins}) {
                 last unless (-d "$dir/$host");
-                my $shellcmd = "find '$dir/$host' -maxdepth 2 -mindepth 2 -type d";
-                push(@lines, qx{$shellcmd});
-            }
-        }
-        @lines = uniq(sort(@lines));
-
-        for my $line (@lines) {
-            if ($self->{config}->{color}) {
-                my $reset = "\x1b[0m";
-                my $neutral = "\x1b[38;5;8m";
-
-                my @segments = split('/', $line);
-                my $i = $#segments;
-                for my $style ('38;5;196', '38;5;62', '38;5;172') {
-                    last unless $segments[$i];
-                    $segments[$i] =~ s,^,\x1b[${style}m,;
-                    $segments[$i] =~ s,$,$reset,;
-                    $i--;
-                }
-                my $joined = join('/', @segments);
-                $joined =~ s,^([\x1b]*),$neutral$1,;
-                $joined =~ s,/,$neutral/,g;
-                print $joined;
-            } else {
-                print $line;
+                system(join(' | ',
+                    "find '$dir/$host' -maxdepth 2 -mindepth 2 -type d",
+                    'sort',
+                    'uniq',
+                    "sed 's,/[^/,XX\1XX,'"
+                ));
             }
         }
     }
