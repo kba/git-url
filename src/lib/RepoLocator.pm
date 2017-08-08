@@ -841,8 +841,8 @@ __PACKAGE__->add_option(
 
 #----------------------------------------------------
 #{{{ add commands
-#
 
+#{{{ readme
 __PACKAGE__->add_command({
     name     => 'readme',
     synopsis => 'Find a README for this repo',
@@ -866,7 +866,9 @@ __PACKAGE__->add_command({
     }
     }
 });
+#}}}
 
+#{{{ config
 __PACKAGE__->add_command({
     name     => 'config',
     synopsis => 'Output information suitable for a zsh completion script',
@@ -893,7 +895,9 @@ __PACKAGE__->add_command({
         }
     }
  });
+#}}}
 
+#{{{ zsh_complete
 __PACKAGE__->add_command({
     name     => 'zsh_complete',
     synopsis => 'Output information suitable for a zsh completion script',
@@ -944,7 +948,9 @@ __PACKAGE__->add_command({
         print join("\n", @complete);
     }
  });
+#}}}
 
+#{{{ edit
 __PACKAGE__->add_command({
     name      => 'edit',
     synopsis  => 'Edit file at <location>',
@@ -974,7 +980,9 @@ __PACKAGE__->add_command({
         HELPER::_system $self->_edit_command();
     }
  });
+#}}}
 
+#{{{ url
 __PACKAGE__->add_command({
     name     => 'url',
     synopsis => 'Get the URL to this file in the online repository.',
@@ -985,17 +993,21 @@ __PACKAGE__->add_command({
         print $self->{browse_url} . "\n";
     }
  });
+#}}}
 
+#{{{ ls
 __PACKAGE__->add_command({
     name     => 'ls',
-    synopsis => 'List all local repositories',
+    synopsis => 'List all local repositories, list only repo names',
     args     => [],
     tag      => 'common',
     do       => sub {
         my ($self) = @_;
+
         # TODO this should not be necessary
         my @alldirs = @{$self->{config}->{repo_dirs}};
         push(@alldirs, $self->{config}->{base_dir});
+
         for my $dir (@alldirs) {
             for my $host (@{__PACKAGE__->list_plugins}) {
                 last unless (-d "$dir/$host");
@@ -1004,7 +1016,32 @@ __PACKAGE__->add_command({
         }
     }
  });
+#}}}
 
+#{{{ ls
+__PACKAGE__->add_command({
+    name     => 'ls_abs',
+    synopsis => 'List all local repositories, list full paths',
+    args     => [],
+    tag      => 'common',
+    do       => sub {
+        my ($self) = @_;
+
+        # TODO this should not be necessary
+        my @alldirs = @{$self->{config}->{repo_dirs}};
+        push(@alldirs, $self->{config}->{base_dir});
+
+        for my $dir (@alldirs) {
+            for my $host (@{__PACKAGE__->list_plugins}) {
+                last unless (-d "$dir/$host");
+                system(qq{find "$dir/$host" -maxdepth 2 -mindepth 2 -type d|sort|uniq });
+            }
+        }
+    }
+ });
+#}}}
+
+#{{{ shell
 __PACKAGE__->add_command({
     name     => 'shell',
     synopsis => 'Open a shell in the local repository directory',
@@ -1018,7 +1055,9 @@ __PACKAGE__->add_command({
         HELPER::_system $self->{config}->{shell};
     }
  });
+#}}}
 
+#{{{ tmux
 __PACKAGE__->add_command({
     name     => 'tmux',
     synopsis => 'Attach to or create a tmux session named like the repo.',
@@ -1058,7 +1097,9 @@ __PACKAGE__->add_command({
         }
     }
  });
+#}}}
 
+#{{{ path
 __PACKAGE__->add_command({
     name     => 'path',
     synopsis => 'Show the path of the local repository for a URL',
@@ -1070,7 +1111,9 @@ __PACKAGE__->add_command({
         print $self->{path_to_repo} . "\n";
     }
  });
+#}}}
 
+#{{{ browse
 __PACKAGE__->add_command({
     name     => 'browse',
     synopsis => 'Open the browser to this file.',
@@ -1083,7 +1126,9 @@ __PACKAGE__->add_command({
         HELPER::_system(join(' ', $self->{config}->{browser}, $self->{browse_url}));
     }
  });
+#}}}
 
+#{{{ help
 __PACKAGE__->add_command({
     name     => 'help',
     synopsis => 'Open help for subcommand or man page',
@@ -1119,7 +1164,9 @@ __PACKAGE__->add_command({
         }
     }
  });
+#}}}
 
+#{{{ version
 __PACKAGE__->add_command({
     name     => 'version',
     synopsis => 'Show version information and such',
@@ -1134,7 +1181,9 @@ __PACKAGE__->add_command({
         printf "https://github.com/kba/%s/commit/%s\n", $HELPER::SCRIPT_NAME, $HELPER::LAST_COMMIT;
     }
  });
+#}}}
 
+#{{{ usage
 __PACKAGE__->add_command({
     name     => 'usage',
     synopsis => 'Show usage',
@@ -1153,6 +1202,7 @@ __PACKAGE__->add_command({
         __PACKAGE__->usage(tags => \@tags);
     }
  });
+#}}}
 
 #}}}
 #----------------------------------------------------
