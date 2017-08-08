@@ -1,6 +1,7 @@
 SCRIPT_NAME = git-url
 VERSION = $(shell cat .version)
 
+# {{{ Install directories
 PREFIX     = $(DESTDIR)/usr/local
 BINDIR     = $(PREFIX)/bin
 LIBDIR     = $(PREFIX)/share/$(SCRIPT_NAME)
@@ -8,6 +9,9 @@ MANBASEDIR = $(PREFIX)/share/man
 MANDIR     = $(PREFIX)/share/man/man1
 ZSHDIR     = $(PREFIX)/share/zsh/site-functions
 CONFDIR    = $(HOME)/.config/$(SCRIPT_NAME)
+# }}}
+
+# {{{ Tools
 
 RM = rm -rvf
 CP = cp -rv
@@ -17,8 +21,15 @@ MKDIR = mkdir -pv
 CHMOD_AX = chmod -c a+x
 PANDOC_OPTIONS = -M hyphenate=false -V adjusting=false 
 PANDOC = pandoc -s $(PANDOC_OPTIONS) -t man
+
+# }}}
+
+#{{{ Source files
+
 LIB_SOURCES = $(shell find src/lib -type f -name "*.pm")
 LIB_TARGETS = $(shell find src/lib -type f -name "*.pm"|sed 's,src/,,')
+
+#}}}
 
 .PHONY: clean check install uninstall
 
@@ -29,10 +40,17 @@ help:
 	
 	@echo
 	@echo "Targets"
-	@echo "  all            Build the full application, including config.ini"
-	@echo "  install        Install the application"
-	@echo "  install-config Install the configuration file"
+	@echo "  all                 Build the full application, including config.ini"
+	@echo "  install             Install the application"
+	@echo "  uninstall           Install the application"
+	@echo "  install-config      Install the configuration file"
+	@echo "  install-watch       Reinstall full application when a file in src changes"
 	@echo
+	@echo "  install-home        Install with PREFIX=$(HOME)/.local"
+	@echo "  uninstall-home      Uninstall with PREFIX=$(HOME)/.local"
+	@echo "  install-watch-home  Reinstall full application when a file in src changes"
+	@echo
+	
 	@echo "Variables"
 	@echo "  PREFIX   Install prefix ['$(PREFIX)']"
 	@echo "  CONFDIR  Directory to installconfig to ['$(CONFDIR)']"
@@ -40,7 +58,7 @@ help:
 
 all: lib bin man config.ini
 
-# lib
+# {{{ lib
 lib: $(LIB_TARGETS)
 
 LAST_COMMIT = $(shell git log --pretty=format:'%h' -n 1)
@@ -59,44 +77,48 @@ lib/RepoLocator/%.pm: src/lib/RepoLocator/%.pm
 lib/%.pm: src/lib/%.pm
 	@$(MKDIR) $(dir $@)
 	@$(CP) $< $@
+# }}}
 
-# bin
+# {{{ bin
 bin: bin/$(SCRIPT_NAME)
 
 bin/$(SCRIPT_NAME): src/bin/$(SCRIPT_NAME).pl
 	@$(MKDIR) bin
 	@$(CP) $< $@
 	@$(CHMOD_AX) $@
+# }}}
 
-# man
+# {{{ man
 man: man/$(SCRIPT_NAME).1
 
 man/%.1: src/man/%.1.md bin has-pandoc dist/gen-manpage.pl
 	@$(MKDIR) man
 	cat $< | perl dist/gen-manpage.pl man | $(PANDOC) -o $@
+# }}}
 
-# config.ini
+# {{{ config.ini
 config.ini: src/config.ini lib bin dist/gen-manpage.pl
 	cat $< | perl dist/gen-manpage.pl ini > $@
+# }}}
 
-# clean
+# {{{ clean
 clean:
 	@$(RM) lib
 	@$(RM) bin
 	@$(RM) man
 	@$(RM) config.ini
+# }}}
 
-# Check for installed programs
+#{{{ Check for installed programs
 has-%:
 	@which $* >/dev/null
 
 check: has-perl has-git has-curl
 	@echo "$(PATH)" | grep -q '$(BINDIR)' || { echo "BINDIR $(BINDIR) not in your PATH!" && exit 1; }
 	@echo "$(MANPATH)" | grep -q '$(MANBASEDIR)' || { echo "MANDIR $(MANDIR) not in your MANPATH!" && exit 1; }
+#}}}
 
-#
-# Install
-#
+# {{{  Install
 install: lib bin man src/zsh/_git-url
 	@$(MKDIR) $(BINDIR) $(LIBDIR) $(MANDIR) $(ZSHDIR)
 	@$(CP) -t $(LIBDIR) bin lib man README.md
@@ -110,9 +132,11 @@ install-config: config.ini
 
 install-all: install install-config
 
-#
-# Uninstall
-#
+install-watch:
+	nodemon -e pm -w src -x $(MAKE) install
+# }}}
+
+#{{{ Uninstall
 uninstall:
 	@$(RM) $(LIBDIR)
 	@$(RM) $(BINDIR)/$(SCRIPT_NAME)
@@ -124,15 +148,14 @@ uninstall-config:
 
 
 uninstall-all: uninstall uninstall-config
+#}}}
 
-#
-# Home install / uninstall / link
-#
+# {{{ Home install / uninstall
 %-home:
 	$(MAKE) PREFIX=$(HOME)/.local $*
+# }}}
 
-#
-# Distribution stuff
+#{{{  Distribution stuff
 #
 # TODAY := $(shell date '+%Y-%m-%d')
 # VERSION_patch := $(shell semver bump patch --pretend)
@@ -150,3 +173,4 @@ uninstall-all: uninstall uninstall-config
 #     semver bump $*
 #     git commit -v .
 #     git tag -a v$(VERSION_$*) -m "Release $(VERSION_$*)"
+#}}}
