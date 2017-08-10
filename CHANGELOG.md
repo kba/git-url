@@ -9,6 +9,7 @@ This project adheres to [Semantic Versioning](http://semver.org/).
 
 ## [unreleased]
 Added
+* color support for `ls-abs`
 Changed
 Fixed
 Removed
