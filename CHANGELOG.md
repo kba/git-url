@@ -16,6 +16,11 @@ Fixed
 Removed
 
 <!-- newest-changes -->
+## [0.2.1] - 2017-09-03
+Added
+* color support for `ls-abs`
+Fixed
+* fork behavior is now more tolerant: If forked already or cloned already: continue
 ## [0.2.0] - 2017-08-08
 Added
 * `readme` command
@@ -114,6 +119,7 @@ Added
 * Initial commit
 
 <!-- link-labels -->
+[0.2.1]: ../../compare/v0.2.0...v0.2.1
 [0.2.0]: ../../compare/v0.1.1...v0.2.0
 [0.1.1]: ../../compare/v0.1.0...v0.1.1
 [0.1.0]: ../../compare/v0.0.7...v0.1.0
