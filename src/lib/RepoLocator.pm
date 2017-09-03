@@ -300,14 +300,14 @@ sub _parse_filename
     ($path, $self->{linenumber}, $self->{column}) = split(':', $path);
     # XXX check too strict
     if (! -e $path) {
-    HELPER::log_debug("No such file/directory: $path");
-    HELPER::log_info("Parsing '%s' as a shortcut", $path);
-    return $self->_parse_url($self->shortcut_to_url($path));
+        HELPER::log_debug("No such file/directory: $path");
+        HELPER::log_info("Parsing '%s' as a shortcut", $path);
+        return $self->_parse_url($self->shortcut_to_url($path));
     }
     $path = File::Spec->rel2abs($path);
     my $dir = HELPER::_git_dir_for_filename($path);
     unless ($dir) {
-    HELPER::log_die("Not in a Git dir: '$path'");
+        HELPER::log_die("Not in a Git dir: '$path'");
     }
     $self->{path_to_repo} = $dir;
     $self->{path_within_repo} = substr($path, length($dir)) || '.';
@@ -368,6 +368,19 @@ sub _parse_url
 }
 #}}}
 
+#{{{ _should_use_ssh
+sub _should_use_ssh
+{
+    my ($self) = @_;
+    if (my $plugin = $self->get_plugin($self->{host})) {
+        if ($self->{config}->{prefer_ssh}) {
+            if ($self->{owner}) {
+                return $self->{owner} eq $plugin->get_username($self);
+            }
+        }
+    }
+}
+
 #{{{ _set_clone_url
 #
 # Set the URL for cloning the repo.
@@ -378,20 +391,17 @@ sub _set_clone_url
     HELPER::log_trace("Setting clone URL");
     HELPER::require_location($self, 'host', 'owner', 'repo_name');
     if ($self->{host} =~ /github|gitlab|bitbucket/mx) {
-    # TODO move this out
-    if ($self->{config}->{prefer_ssh}
-        && (   $self->{owner} eq $self->{config}->{github_user}
-            || $self->{owner} eq $self->{config}->{gitlab_user}))
-    {
-        $self->{clone_url} = $self->_get_clone_url_ssh_owner_reponame();
+        # TODO move this out
+        if ($self->_should_use_ssh)
+        {
+            $self->{clone_url} = $self->_get_clone_url_ssh_owner_reponame();
+        } else {
+            $self->{clone_url} = $self->_get_clone_url_https_owner_reponame();
+        }
+    } else {
+        HELPER::log_die('Unknown repository tag for ' . Dumper($self->{host}));
     }
-    else {
-        $self->{clone_url} = $self->_get_clone_url_https_owner_reponame();
-    }
-    }
-    else {
-    HELPER::log_die('Unknown repository tag for ' . Dumper($self->{host}));
-    }
+    HELPER::log_trace("Setting clone URL to " . $self->{clone_url});
     return;
 }
 #}}}
@@ -421,6 +431,7 @@ sub _set_browse_url
         $self->{branch},
         $self->{path_within_repo});
     }
+    HELPER::log_trace("Setting browse URL to " . $self->{browse_url});
     return;
 }
 #}}}
@@ -434,31 +445,43 @@ sub _set_browse_url
 sub _find_in_repo_dirs
 {
     my $self = shift;
-    HELPER::log_trace("Looking for %s in repo_dirs %s", $self->{repo_name}, Dumper $self->{config}->{repo_dirs});
-    for my $dir (@{ $self->{config}->{repo_dirs} }, $self->{config}->{base_dir}) {
-    HELPER::log_trace("Checking repo_dir $dir");
-    if (!-d $dir) {
-        HELPER::log_error("Not a directory (in repo_dirs): $dir");
-        carp Dumper $self->{config}->{repo_dirs};
-    }
-    my @candidates = (
+    my $tocheck = shift || $self;
+    my ($owner, $host, $repo_name) = @{$tocheck}{'owner', 'host', 'repo_name'};
+    HELPER::log_trace("Looking for %s in repo_dirs %s",
         $self->{repo_name},
-        join('/', $self->{owner}, $self->{repo_name}),
-        join('/', $self->{host}, $self->{owner}, $self->{repo_name}),
+        Dumper $self->{config}->{repo_dirs}
     );
-
-    # XXX hard-coded
-    for my $host (qw(github.com gitlab.com bitbucket.com)) {
-        push @candidates, join('/', $host, $self->{owner}, $self->{repo_name});
-    }
-    for my $candidate (@candidates) {
-        $candidate = "$dir/$candidate";
-        HELPER::log_trace("Trying candidate $candidate");
-        if ((-l $candidate) || ((-d $candidate) && HELPER::_git_dir_for_filename($candidate) eq $candidate)) {
-            $self->{path_to_repo} = $candidate;
-            return;
+    for my $dir (@{ $self->{config}->{repo_dirs} }, $self->{config}->{base_dir}) {
+        HELPER::log_trace("Checking repo_dir $dir");
+        if (!-d $dir) {
+            HELPER::log_error("Not a directory (in repo_dirs): $dir");
+            carp Dumper $self->{config}->{repo_dirs};
         }
-    }
+        my @candidates = ($repo_name);
+        if ($owner) {
+            push @candidates, join('/', $owner, $repo_name);
+            if ($host) {
+                push @candidates, join('/', $host, $owner, $repo_name);
+            };
+        };
+
+        # XXX hard-coded
+        for my $host (qw(github.com gitlab.com bitbucket.com)) {
+            push @candidates, join('/', $host, $owner, $repo_name);
+        }
+        for my $candidate (@candidates) {
+            $candidate = "$dir/$candidate";
+            HELPER::log_trace("Trying candidate $candidate");
+            if ((-l $candidate)
+                ||
+                (
+                    (-d $candidate)
+                    &&
+                    HELPER::_git_dir_for_filename($candidate) eq $candidate)) {
+                $tocheck->{path_to_repo} = $candidate;
+                return;
+            }
+        }
     }
     return;
 }
@@ -474,7 +497,7 @@ sub _create_repo
     HELPER::require_location($self, 'host', 'owner', 'repo_name');
     HELPER::log_info("Creating repo %s/%s/%s", $self->{host}, $self->{owner}, $self->{repo_name});
     if ($self->get_plugin($self->{config}->{platform})) {
-    $self->get_plugin($self->{config}->{platform})->create_repo($self);
+        $self->get_plugin($self->{config}->{platform})->create_repo($self);
     } else {
     HELPER::log_die(
         sprintf "Creating repos only supported for [%s] currently",
@@ -482,6 +505,22 @@ sub _create_repo
     }
     $self->_reset_urls();
     return;
+}
+#}}}
+
+#{{{
+#
+# Print host/owner/reponame repository if it exists
+sub _find_repo_clone_location
+{
+    my $self = shift;
+    my ($owner, $host, $repo_name) = @_;
+    my $ret = $self->_find_in_repo_dirs({
+        owner => $owner,
+        host => $host,
+        repo_name => $repo_name,
+    });
+    if ($ret) { return $ret->{repo_name}; }
 }
 #}}}
 
@@ -493,12 +532,19 @@ sub _fork_repo
 {
     my ($self) = @_;
     HELPER::require_location($self, 'host', 'owner', 'repo_name');
-    HELPER::log_info("Forking as %s@%s", $self->{owner}, $self->{host});
-    # TODO proper check
-    if ($self->get_plugin($self->{host})) {
-    $self->get_plugin($self->{host})->fork_repo($self);
+    my $host = $self->{host};
+    if (my $plugin = $self->get_plugin($host)) {
+        my $owner = $plugin->get_username($self);
+        if (my $path_to_repo = $self->_find_repo_clone_location($owner, $host, $self->{repo_name})) {
+            $self->{owner} = $owner;
+            $self->_reset_urls();
+            HELPER::log_info("Already cloned as $path_to_repo");
+        } else {
+            HELPER::log_info("Forking from %s@%s", $self->{owner}, $host);
+            $plugin->fork_repo($self);
+        }
     } else {
-    HELPER::log_die("Forking only supported for Github and Gitlab currently.");
+        HELPER::log_die("Forking only supported for Github and Gitlab currently, no plugin for $host");
     }
     $self->_reset_urls();
     return;
@@ -514,21 +560,24 @@ sub _obtain_repo
     my ($self) = @_;
     HELPER::require_location($self, 'host', 'owner', 'repo_name');
     if (!$self->{path_to_repo}) {
-    $self->_find_in_repo_dirs();
+        $self->_find_in_repo_dirs();
     }
-    if ($self->{path_to_repo} && !$self->{config}->{ignore_existing}) {
-    return 1;
+    if ($self->{path_to_repo}
+        && !$self->{config}->{ignore_existing}
+        && !$self->{config}->{fork}
+    ) {
+        return 1;
     }
     if ($self->{config}->{create}) {
-    $self->_create_repo();
+        $self->_create_repo();
     } elsif ($self->{config}->{fork}) {
-    $self->_fork_repo();
+        $self->_fork_repo();
     }
     if ($self->{config}->{clone}) {
-    $self->_clone_repo();
+        $self->_clone_repo();
     }
     unless ($self->{path_to_repo}) {
-    HELPER::log_die("No local repository found.");
+        HELPER::log_die("No local repository found.");
     }
 }
 #}}}
@@ -545,17 +594,21 @@ sub _clone_repo
     HELPER::_mkdirp($ownerDir);
     HELPER::_chdir($ownerDir);
     my $repoDir = join('/', $ownerDir, $self->{repo_name});
-    my $cloneCmd = $self->_clone_command();
-    HELPER::log_info(sprintf "Clone '%s' to '%s'.", $self->{clone_url}, $repoDir);
-    my $output = HELPER::_system($cloneCmd . ' 2>&1');
-    if ($? > 0) {
-    unless ($self->{config}->{create}) {
-        HELPER::log_die("'$cloneCmd' failed with '$?':\n " . $output);
-    }
-    }
     if (! -d $repoDir) {
-    carp "'$cloneCmd' failed silently for " . Dumper($self->{url});
-    return;
+        my $cloneCmd = $self->_clone_command();
+        HELPER::log_info(sprintf "Clone '%s' to '%s'.", $self->{clone_url}, $repoDir);
+        my $output = HELPER::_system($cloneCmd . ' 2>&1');
+        if ($? > 0) {
+            unless ($self->{config}->{create}) {
+                HELPER::log_die("'$cloneCmd' failed with '$?':\n " . $output);
+            }
+        }
+        if (! -d $repoDir) {
+            carp "'$cloneCmd' failed silently for " . Dumper($self->{url});
+            return;
+        }
+    } else {
+        HELPER::log_info("Repository already cloned: '$repoDir'")
     }
     $self->{path_to_repo} = $repoDir;
     return;
@@ -569,7 +622,7 @@ sub _reset_urls
     $self->_set_browse_url();
     $self->_set_clone_url();
     unless ($self->{config}->{ignore_existing}) {
-    $self->_find_in_repo_dirs();
+        $self->_find_in_repo_dirs();
     }
     return;
 }
@@ -596,12 +649,12 @@ sub new
 
     # sanity checks
     if ($self->{config}->{fork}) {
-    HELPER::log_debug("----------------------------------------------------fork implies --clone");
-    $self->{config}->{clone} = 1;
+        HELPER::log_debug("--fork implies --clone");
+        $self->{config}->{clone} = 1;
     }
 
     if ($self->{config}->{create} && $self->{config}->{fork}) {
-    HELPER::log_die("----------------------------------------------------create conflicts with --fork");
+        HELPER::log_die("--create conflicts with --fork");
     }
 
     if ($self->{config}->{platform} && ! $self->get_plugin($self->{config}->{platform})) {

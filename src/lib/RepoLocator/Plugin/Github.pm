@@ -89,6 +89,8 @@ sub create_repo
     return;
 }
 
+sub get_username { return $_[1]->{config}->{github_user} }
+
 sub fork_repo
 {
     my ($cls, $self) = @_;

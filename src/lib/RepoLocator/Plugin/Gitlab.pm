@@ -50,6 +50,7 @@ sub add_options
     );
     return;
 }
+sub get_username { return $_[1]->{config}->{github_user} }
 
 sub create_repo
 {
