@@ -12,6 +12,7 @@ Added
 * color support for `ls-abs`
 Changed
 Fixed
+* fork behavior is now more tolerant: If forked already or cloned already: continue
 Removed
 
 <!-- newest-changes -->
