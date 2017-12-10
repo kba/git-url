@@ -1,10 +1,19 @@
-git-url
-=======
+# git-url
 
-Work with remote repositories on the Command line with ease.
+> Work with remote repositories on the Command line with ease.
 
-Use Cases
----------
+<!-- BEGIN-MARKDOWN-TOC -->
+* [Use Cases](#use-cases)
+	* [From Github to $EDITOR in one step](#from-github-to-editor-in-one-step)
+	* [From Git directory to Github project in one step](#from-git-directory-to-github-project-in-one-step)
+	* [Open or reattach a Github project as a tmux session](#open-or-reattach-a-github-project-as-a-tmux-session)
+	* [Open a shell in the right repository using just the repo name](#open-a-shell-in-the-right-repository-using-just-the-repo-name)
+* [Installation](#installation)
+* [Options and Configuration](#options-and-configuration)
+
+<!-- END-MARKDOWN-TOC -->
+
+## Use Cases
 
 ### From Github to $EDITOR in one step
 
@@ -62,8 +71,7 @@ git url shell some-repo
 This will find the repo locally or clone it if necessary, `cd` to that
 directory and open a shell.
 
-Installation
-------------
+## Installation
 
 Written as a single perl script without CPAN dependencies.
 
@@ -81,8 +89,7 @@ To install into your home directory:
 make install-home
 ```
 
-Options and Configuration
--------------------------
+## Options and Configuration
 
 `git-url` can be configured using command-line parameters, a configuration file
 and environment variables. A commented sample configuration is installed to
