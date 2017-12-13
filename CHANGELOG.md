@@ -5,10 +5,16 @@ All notable changes to this project will be documented in this file.
 This project adheres to [Semantic Versioning](http://semver.org/).
 
 ## TODO
-* Prompt before creating remotely
 
 ## [unreleased]
 Added
+Changed
+Fixed
+Removed
+
+## [0.2.2] - 2017-12-13
+Added
+* Prompt before creating remotely
 Changed
 Fixed
 Removed
@@ -117,6 +123,7 @@ Added
 * Initial commit
 
 <!-- link-labels -->
+[0.2.2]: ../../compare/v0.2.1...v0.2.2
 [0.2.1]: ../../compare/v0.2.0...v0.2.1
 [0.2.0]: ../../compare/v0.1.1...v0.2.0
 [0.1.1]: ../../compare/v0.1.0...v0.1.1

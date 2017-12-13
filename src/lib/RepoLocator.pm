@@ -499,9 +499,9 @@ sub _create_repo
     if ($self->get_plugin($self->{config}->{platform})) {
         $self->get_plugin($self->{config}->{platform})->create_repo($self);
     } else {
-    HELPER::log_die(
-        sprintf "Creating repos only supported for [%s] currently",
-        join(', ', $self->list_plugins()));
+        HELPER::log_die(
+            sprintf "Creating repos only supported for [%s] currently",
+            join(', ', $self->list_plugins()));
     }
     $self->_reset_urls();
     return;

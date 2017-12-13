@@ -80,6 +80,7 @@ sub create_repo
         $api_url
     );
     HELPER::log_info($forkCmd);
+    print("<Enter> to create repository on Github, <Ctrl-C> to cancel\n");
     <>;
     my $resp = HELPER::_qx($forkCmd);
     if ([ split("\n", $resp) ]->[0] !~ 201) {
