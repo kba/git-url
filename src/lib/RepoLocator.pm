@@ -328,7 +328,7 @@ sub _parse_filename
     }
     }
     if (!$baseURL) {
-    HELPER::log_die("Couldn't find a remote");
+        HELPER::log_die("Couldn't find a remote");
     }
     $self->_parse_url($baseURL);
     return;
@@ -361,8 +361,9 @@ sub _parse_url
     ($url_parts[-1], $self->{line}) = split('#', $url_parts[-1]);
 
     if ($url_parts[3] && $url_parts[3] eq 'blob') {
-    $self->{branch} = $url_parts[4];
-    $self->{path_within_repo} = join('/', @url_parts[ 5 .. $#url_parts ]);
+        $self->{branch} = $url_parts[4];
+        $self->{path_within_repo} = join('/', @url_parts[ 5 .. $#url_parts ]);
+        HELPER::log_trace("Parsed URL '$url'");
     }
     return $self;
 }
@@ -380,6 +381,7 @@ sub _should_use_ssh
         }
     }
 }
+#}}}
 
 #{{{ _set_clone_url
 #
@@ -667,18 +669,18 @@ sub new
     $self->{branch}           = 'master'; # TODO hard-coded
 
     if ($self->{args}->[0]) {
-    if ($self->{args}->[0] =~ /^(https?:|git@)/mx) {
-        $self->_parse_url($self->{args}->[0]);
-    } else {
-        $self->_parse_filename($self->{args}->[0]);
-    }
-    $self->_reset_urls();
+        if ($self->{args}->[0] =~ /^(https?:|git@)/mx) {
+            $self->_parse_url($self->{args}->[0]);
+        } else {
+            $self->_parse_filename($self->{args}->[0]);
+        }
+        $self->_reset_urls();
     }
     else {
-    HELPER::log_info("No path or URL given");
+        HELPER::log_info("No path or URL given");
     }
     if ($HELPER::LOGLEVEL > 1) {
-    HELPER::log_trace("Parsed as: " . Dumper $self);
+        HELPER::log_trace("Parsed as: " . Dumper $self);
     }
 
     return $self;
@@ -1054,6 +1056,8 @@ __PACKAGE__->add_command({
     tag      => 'common',
     do       => sub {
         my ($self) = @_;
+        if (! $self->{args}->[0]) {$self->_parse_filename('.');}
+        $self->_reset_urls();
         HELPER::require_location($self, 'browse_url');
         print $self->{browse_url} . "\n";
     }
@@ -1208,6 +1212,8 @@ __PACKAGE__->add_command({
     tag      => 'common',
     do       => sub {
         my ($self) = @_;
+        if (! $self->{args}->[0]) {$self->_parse_filename('.');}
+        $self->_reset_urls();
         HELPER::require_location($self, 'browse_url');
         HELPER::_system(join(' ', $self->{config}->{browser}, $self->{browse_url}));
     }
