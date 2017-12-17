@@ -1,6 +1,6 @@
 % GIT-URL(1) git-url User Manual
 % Konstantin Baierer
-% January 07, 2016
+% __VERSION__ (__BUILD_DATE__)
 
 # NAME
 

@@ -93,7 +93,10 @@ man: man/$(SCRIPT_NAME).1
 
 man/%.1: src/man/%.1.md bin has-pandoc dist/gen-manpage.pl
 	@$(MKDIR) man
-	cat $< | perl dist/gen-manpage.pl man | $(PANDOC) -o $@
+	cat $< \
+		| sed 's/__VERSION__/$(VERSION)/' \
+		| sed 's/__BUILD_DATE__/$(shell date -I)/' \
+		| perl dist/gen-manpage.pl man | $(PANDOC) -o $@
 # }}}
 
 # {{{ config.ini
