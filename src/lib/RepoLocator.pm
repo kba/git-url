@@ -1077,8 +1077,13 @@ __PACKAGE__->add_command({
 
         for my $dir (@alldirs) {
             for my $host (@{__PACKAGE__->list_plugins}) {
-                last unless (-d "$dir/$host");
-                system(qq{find "$dir/$host" -maxdepth 2 -mindepth 2 -type d|sed 's,.*/,,'|sort|uniq });
+                next unless (-d "$dir/$host");
+                system("cd $dir;" . join('|',
+                        "find '$host' -maxdepth 2 -mindepth 2 -type d",
+                        "sed 's,[^/]*/,,'",
+                        'sort',
+                        'uniq'
+                    ));
             }
         }
     }
@@ -1099,7 +1104,7 @@ __PACKAGE__->add_command({
         my @lines;
         for my $dir (@alldirs) {
             for my $host (@{__PACKAGE__->list_plugins}) {
-                last unless (-d "$dir/$host");
+                next unless (-d "$dir/$host");
                 my $shellcmd = "find '$dir/$host' -maxdepth 2 -mindepth 2 -type d";
                 push(@lines, qx{$shellcmd});
             }

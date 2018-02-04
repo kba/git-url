@@ -12,6 +12,14 @@ Changed
 Fixed
 Removed
 
+## [0.2.4] - 2018-02-04
+Fixed
+* `ls` and `ls-abs` were broken for non-existant plugin dirs
+
+## [0.2.3] - 2017-12-17
+Fixed
+* Allow 'url' and 'browse' without arguments
+
 ## [0.2.2] - 2017-12-13
 Added
 * Prompt before creating remotely
@@ -123,6 +131,8 @@ Added
 * Initial commit
 
 <!-- link-labels -->
+[0.2.4]: ../../compare/v0.2.3...v0.2.4
+[0.2.3]: ../../compare/v0.2.2...v0.2.3
 [0.2.2]: ../../compare/v0.2.1...v0.2.2
 [0.2.1]: ../../compare/v0.2.0...v0.2.1
 [0.2.0]: ../../compare/v0.1.1...v0.2.0
