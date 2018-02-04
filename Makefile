@@ -2,12 +2,18 @@ SCRIPT_NAME = git-url
 VERSION = $(shell cat .version)
 
 # {{{ Install directories
+
+# Installation prefix. Default: $(DESTDIR)/usr/local
 PREFIX     = $(DESTDIR)/usr/local
+
 BINDIR     = $(PREFIX)/bin
 LIBDIR     = $(PREFIX)/share/$(SCRIPT_NAME)
 MANBASEDIR = $(PREFIX)/share/man
 MANDIR     = $(PREFIX)/share/man/man1
+
+# Directory to install zsh completion to.
 ZSHDIR     = $(PREFIX)/share/zsh/site-functions
+
 CONFDIR    = $(HOME)/.config/$(SCRIPT_NAME)
 # }}}
 
@@ -33,32 +39,41 @@ LIB_TARGETS = $(shell find src/lib -type f -name "*.pm"|sed 's,src/,,')
 
 .PHONY: clean check install uninstall
 
-help:
+help-banner:
 	@echo "-----------------------------------------"
 	@echo "Building git-url (Last Commit: $(LAST_COMMIT))"
 	@echo "-----------------------------------------"
-	
-	@echo
-	@echo "Targets"
-	@echo "  all                 Build the full application, including config.ini"
-	@echo "  install             Install the application"
-	@echo "  uninstall           Install the application"
-	@echo "  install-config      Install the configuration file"
-	@echo "  install-watch       Reinstall full application when a file in src changes"
-	@echo
-	@echo "  install-home        Install with PREFIX=$(HOME)/.local"
-	@echo "  uninstall-home      Uninstall with PREFIX=$(HOME)/.local"
-	@echo "  install-watch-home  Reinstall full application when a file in src changes"
-	@echo
-	
-	@echo "Variables"
-	@echo "  PREFIX   Install prefix ['$(PREFIX)']"
-	@echo "  CONFDIR  Directory to installconfig to ['$(CONFDIR)']"
-	@echo
+	$(MAKE) help
 
+# BEGIN-EVAL makefile-parser --make-help Makefile
+
+help:
+	@echo ""
+	@echo "  Targets"
+	@echo ""
+	@echo "    lib             Build perl source"
+	@echo "    bin             Build binary"
+	@echo "    man             Build manpage"
+	@echo "    config.ini      Generate config.ini"
+	@echo "    clean           Remove built files"
+	@echo "    install         Install to $PREFIX"
+	@echo "    install-config  Install the configuration file"
+	@echo "    install/watch   Continuously install whenever source changes"
+	@echo "    uninstall       uninstall"
+	@echo "    %-home          install/uninstall to $(HOME)/.local"
+	@echo ""
+	@echo "  Variables"
+	@echo ""
+	@echo "    PREFIX  Installation prefix. Default: $(DESTDIR)/usr/local"
+	@echo "    ZSHDIR  Directory to install zsh completion to."
+
+# END-EVAL
+	
 all: lib bin man config.ini
 
-# {{{ lib
+# {{ lib
+
+# Build perl source
 lib: $(LIB_TARGETS)
 
 LAST_COMMIT = $(shell git log --pretty=format:'%h' -n 1)
@@ -80,6 +95,8 @@ lib/%.pm: src/lib/%.pm
 # }}}
 
 # {{{ bin
+
+# Build binary
 bin: bin/$(SCRIPT_NAME)
 
 bin/$(SCRIPT_NAME): src/bin/$(SCRIPT_NAME).pl
@@ -89,6 +106,8 @@ bin/$(SCRIPT_NAME): src/bin/$(SCRIPT_NAME).pl
 # }}}
 
 # {{{ man
+
+# Build manpage
 man: man/$(SCRIPT_NAME).1
 
 man/%.1: src/man/%.1.md bin has-pandoc dist/gen-manpage.pl
@@ -100,11 +119,15 @@ man/%.1: src/man/%.1.md bin has-pandoc dist/gen-manpage.pl
 # }}}
 
 # {{{ config.ini
+
+# Generate config.ini
 config.ini: src/config.ini lib bin dist/gen-manpage.pl
 	cat $< | perl dist/gen-manpage.pl ini > $@
 # }}}
 
 # {{{ clean
+
+# Remove built files
 clean:
 	@$(RM) lib
 	@$(RM) bin
@@ -113,6 +136,8 @@ clean:
 # }}}
 
 #{{{ Check for installed programs
+
+
 has-%:
 	@which $* >/dev/null
 
@@ -122,6 +147,8 @@ check: has-perl has-git has-curl
 #}}}
 
 # {{{  Install
+
+# Install to $PREFIX
 install: lib bin man src/zsh/_git-url
 	@$(MKDIR) $(BINDIR) $(LIBDIR) $(MANDIR) $(ZSHDIR)
 	@$(CP) -t $(LIBDIR) bin lib man README.md
@@ -129,17 +156,21 @@ install: lib bin man src/zsh/_git-url
 	@$(LN) -t $(MANDIR) $(LIBDIR)/man/$(SCRIPT_NAME).1
 	@$(CP) -t $(ZSHDIR) src/zsh/_$(SCRIPT_NAME)
 
+# Install the configuration file
 install-config: config.ini
 	@$(MKDIR) $(CONFDIR)
 	@$(CP_SECURE) -t $(CONFDIR) config.ini
 
 install-all: install install-config
 
-install-watch:
+# Continuously install whenever source changes
+install/watch:
 	nodemon -e pm -w src -x $(MAKE) install
 # }}}
 
 #{{{ Uninstall
+
+# uninstall
 uninstall:
 	@$(RM) $(LIBDIR)
 	@$(RM) $(BINDIR)/$(SCRIPT_NAME)
@@ -154,6 +185,8 @@ uninstall-all: uninstall uninstall-config
 #}}}
 
 # {{{ Home install / uninstall
+
+# install/uninstall to $(HOME)/.local
 %-home:
 	$(MAKE) PREFIX=$(HOME)/.local $*
 # }}}
