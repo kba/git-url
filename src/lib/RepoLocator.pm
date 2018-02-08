@@ -1194,6 +1194,22 @@ __PACKAGE__->add_command({
  });
 #}}}
 
+#{{{ tmux-choose
+__PACKAGE__->add_command({
+    name     => 'tmux_choose',
+    synopsis => 'Choose a tmux session with fzf',
+    args     => [],
+    tag      => 'common',
+    do       => sub {
+        my ($self) = @_;
+        my $repo_path = HELPER::_qx("git-url ls-abs|fzf --ansi --history=$ENV{HOME}/.git-url.histfile");
+        if ($repo_path) {
+            HELPER::_system("git-url tmux $repo_path");
+        }
+    }
+ });
+#}}}
+
 #{{{ path
 __PACKAGE__->add_command({
     name     => 'path',

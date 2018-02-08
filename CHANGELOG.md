@@ -12,6 +12,10 @@ Changed
 Fixed
 Removed
 
+## [0.3.0] - 2018-02-07
+Added
+* `tmux-choose` to choose a repo with fzf
+
 ## [0.2.4] - 2018-02-04
 Fixed
 * `ls` and `ls-abs` were broken for non-existant plugin dirs
